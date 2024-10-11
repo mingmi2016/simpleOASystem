@@ -1,0 +1,6 @@
+mysite/app01/migrations/*
+mysite/manage.py
+.venv/*
+
+
+

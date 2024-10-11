@@ -1,0 +1,35 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>审批步骤列表</h1>
+<a href="{% url 'approval_step_create' %}" class="btn btn-primary mb-3">添加新步骤</a>
+<table class="table">
+    <thead>
+        <tr>
+            <th>名称</th>
+            <th>顺序</th>
+            <th>审批组</th>
+            <th>指定审批人</th>
+            <th>操作</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for step in steps %}
+        <tr>
+            <td>{{ step.name }}</td>
+            <td>{{ step.order }}</td>
+            <td>{{ step.approver_group|default_if_none:"-" }}</td>
+            <td>{{ step.approver_user|default_if_none:"-" }}</td>
+            <td>
+                <a href="{% url 'approval_step_edit' step.id %}" class="btn btn-sm btn-primary">编辑</a>
+                <a href="{% url 'approval_step_delete' step.id %}" class="btn btn-sm btn-danger">删除</a>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="5">暂无审批步骤</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+{% endblock %}

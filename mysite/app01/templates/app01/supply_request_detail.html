@@ -1,0 +1,53 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>供应请求详情</h1>
+<p>申请人: {{ supply_request.employee.username }}</p>
+<p>申请原因: {{ supply_request.reason }}</p>
+<p>状态: {{ supply_request.get_status_display }}</p>
+<p>当前审批步骤: {{ supply_request.current_step.name|default:"审批完成" }}</p>
+
+<h2>申请物品</h2>
+<ul>
+{% for item in supply_request.items.all %}
+    <li>{{ item.supply.name }} - 数量: {{ item.quantity }}</li>
+{% endfor %}
+</ul>
+
+<h2>审批历史</h2>
+<table class="table">
+    <thead>
+        <tr>
+            <th>步骤</th>
+            <th>审批人</th>
+            <th>状态</th>
+            <th>审批时间</th>
+            <th>评论</th>
+        </tr>
+    </thead>
+    <tbody>
+    {% for approval in supply_request.approvals.all %}
+        <tr {% if approval.step == supply_request.current_step %}class="table-primary"{% endif %}>
+            <td>{{ approval.step.name }}</td>
+            <td>{{ approval.approver.username }}</td>
+            <td>
+                {% if approval.is_approved == True %}
+                    <span class="text-success">已批准</span>
+                {% elif approval.is_approved == False %}
+                    <span class="text-danger">已拒绝</span>
+                {% else %}
+                    <span class="text-warning">待审批</span>
+                {% endif %}
+            </td>
+            <td>{{ approval.updated_at|default_if_none:"-" }}</td>
+            <td>{{ approval.comment|default_if_none:"-" }}</td>
+        </tr>
+    {% endfor %}
+    </tbody>
+</table>
+
+{% if supply_request.can_be_deleted and user.is_staff or user == supply_request.employee %}
+    <a href="{% url 'delete_supply_request' supply_request.id %}" class="btn btn-danger" onclick="return confirm('确定要删除这个供应请求吗？');">删除请求</a>
+{% endif %}
+
+{% endblock %}

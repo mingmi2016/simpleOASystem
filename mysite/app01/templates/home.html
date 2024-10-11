@@ -1,0 +1,29 @@
+{% extends 'base.html' %}
+
+{% block title %}欢迎来到办公系统{% endblock %}
+
+{% block content %}
+<h1>欢迎来到办公系统</h1>
+<p>这是我们的主页。您可以从这里开始导航到系统的其他部分。</p>
+
+<div class="row mt-4">
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">请假申请</h5>
+                <p class="card-text">申请休假或查看您的请假记录。</p>
+                {% comment %} <a href="{% url 'leave_request_list' %}" class="btn btn-primary">查看请假申请</a> {% endcomment %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-6">
+        <div class="card">
+            <div class="card-body">
+                <h5 class="card-title">办公用品申请</h5>
+                <p class="card-text">申请办公用品或查看您的申请记录。</p>
+                <a href="{% url 'create_supply_request' %}" class="btn btn-primary">申请办公用品</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

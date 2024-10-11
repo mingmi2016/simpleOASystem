@@ -1,0 +1,36 @@
+{% extends 'base.html' %}
+
+{% block title %}我的办公用品申请{% endblock %}
+
+{% block content %}
+<h1>我的办公用品申请</h1>
+<table class="table">
+    <thead>
+        <tr>
+            <th>申请日期</th>
+            <th>物品</th>
+            <th>数量</th>
+            <th>状态</th>
+            <th>操作</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for request in supply_requests %}
+        <tr>
+            <td>{{ request.created_at|date:"Y-m-d" }}</td>
+            <td>{{ request.supply.name }}</td>
+            <td>{{ request.quantity }}</td>
+            <td>{{ request.get_status_display }}</td>
+            <td>
+                <a href="{% url 'supply_request_detail' request.pk %}" class="btn btn-sm btn-info">查看详情</a>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="5">您还没有申请过办公用品。</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+<a href="{% url 'create_supply_request' %}" class="btn btn-primary">新建申请</a>
+{% endblock %}

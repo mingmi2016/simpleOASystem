@@ -1,0 +1,25 @@
+{% extends 'base.html' %}
+
+{% block title %}审批申请{% endblock %}
+
+{% block content %}
+<h1>审批申请</h1>
+<h2>申请详情</h2>
+<p>申请人: {{ approval.supply_request.employee }}</p>
+<p>申请日期: {{ approval.supply_request.created_at|date:"Y-m-d" }}</p>
+<p>申请原因: {{ approval.supply_request.reason }}</p>
+
+<h3>申请物品</h3>
+<ul>
+{% for item in approval.supply_request.items.all %}
+    <li>{{ item.supply.name }} - {{ item.quantity }}个</li>
+{% endfor %}
+</ul>
+
+<h2>审批 ({{ approval.step.name }})</h2>
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary">提交审批</button>
+</form>
+{% endblock %}

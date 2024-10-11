@@ -1,0 +1,11 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>欢迎来到 App01</h1>
+<p>这是 App01 的主页。</p>
+<ul>
+    <li><a href="{% url 'create_supply_request' %}">创建供应请求</a></li>
+    <li><a href="{% url 'approval_list' %}">审批列表</a></li>
+    <li><a href="{% url 'approval_step_list' %}">审批步骤管理</a></li>
+</ul>
+{% endblock %}

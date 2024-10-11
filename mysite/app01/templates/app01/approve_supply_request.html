@@ -1,0 +1,17 @@
+{% extends 'base.html' %}
+
+{% block title %}审批办公用品申请{% endblock %}
+
+{% block content %}
+<h1>审批办公用品申请</h1>
+<p>申请人: {{ approval.supply_request.employee }}</p>
+<p>物品: {{ approval.supply_request.supply.name }}</p>
+<p>数量: {{ approval.supply_request.quantity }}</p>
+<p>原因: {{ approval.supply_request.reason }}</p>
+
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit" class="btn btn-primary">提交审批</button>
+</form>
+{% endblock %}

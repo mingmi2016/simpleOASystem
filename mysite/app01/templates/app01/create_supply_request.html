@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% block title %}申请办公用品{% endblock %}
+
+{% block content %}
+<h1>申请办公用品</h1>
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    {{ formset.management_form }}
+    {% for form in formset %}
+        {{ form.as_p }}
+    {% endfor %}
+    <button type="submit">提交申请</button>
+</form>
+
+<script>
+    document.getElementById('add-item').addEventListener('click', function() {
+        var formCount = parseInt(document.getElementById('id_items-TOTAL_FORMS').value);
+        var newForm = document.querySelector('.item-form').cloneNode(true);
+        newForm.innerHTML = newForm.innerHTML.replace(/items-(\d+)/g, 'items-' + formCount);
+        document.getElementById('item-formset').appendChild(newForm);
+        document.getElementById('id_items-TOTAL_FORMS').value = formCount + 1;
+    });
+</script>
+{% endblock %}
