@@ -2,6 +2,21 @@ from django.db import models
 from django.contrib.auth.models import User, Group
 from django.db.models.signals import post_save
 from django.dispatch import receiver
+from .utils import generate_approval_token
+from django.utils import timezone
+import smtplib
+
+from django.core.mail import send_mail
+from django.utils.encoding import force_str
+from django.conf import settings
+import logging
+
+from django.urls import reverse
+from email.mime.text import MIMEText
+from email.header import Header
+
+
+logger = logging.getLogger(__name__)
 
 class LeaveRequest(models.Model):
     LEAVE_TYPES = (
@@ -138,6 +153,9 @@ class SupplyRequest(models.Model):
     )
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="更新时间")
+    current_approver = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='current_approvals')
+    next_approver = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='next_approvals')
+    current_approval_step = models.IntegerField(default=1)
 
     class Meta:
         verbose_name = "办公用品申请"
@@ -151,6 +169,26 @@ class SupplyRequest(models.Model):
 
     def can_be_deleted(self):
         return self.status in ['pending', 'rejected'] and not self.approvals.filter(is_approved=True).exists()
+
+    def get_next_approver(self):
+        if self.next_approver:
+            current = self.current_approver
+            self.current_approver = self.next_approver
+            self.next_approver = None
+            self.save()
+            return current
+        return None
+
+    def move_to_next_approval(self):
+
+        next_approval = self.requestapproval_set.filter(
+                status='pending'
+            ).first()
+            
+        if next_approval:
+           return next_approval
+        
+        return None
 
 class SupplyRequestItem(models.Model):
     """
@@ -184,19 +222,20 @@ class RequestApproval(models.Model):
     
     用于记录每个申请在各个审批步骤中的审批情况。
     """
-    supply_request = models.ForeignKey(
-        SupplyRequest, 
-        on_delete=models.CASCADE, 
-        related_name='approvals', 
-        verbose_name="所属申请"
+    STATUS_CHOICES = (
+        ('pending', '待审批'),
+        ('approved', '已批准'),
+        ('rejected', '已拒绝'),
     )
+
+    supply_request = models.ForeignKey('SupplyRequest', on_delete=models.CASCADE)
     step = models.ForeignKey(
         ApprovalStep, 
         on_delete=models.CASCADE, 
         verbose_name="审批步骤"
     )
     approver = models.ForeignKey(
-        User, 
+        settings.AUTH_USER_MODEL, 
         on_delete=models.CASCADE, 
         verbose_name="审批人"
     )
@@ -204,6 +243,14 @@ class RequestApproval(models.Model):
     comment = models.TextField(blank=True, verbose_name="审批意见")
     created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="更新时间")
+    approval_token = models.CharField(max_length=32, unique=True, default=generate_approval_token)
+    email_sent_at = models.DateTimeField(null=True, blank=True)
+    status = models.CharField(
+        max_length=10,
+        choices= STATUS_CHOICES,
+        default='pending',
+        verbose_name='审批状态'
+    )
 
     class Meta:
         ordering = ['step__order']
@@ -212,3 +259,64 @@ class RequestApproval(models.Model):
 
     def __str__(self):
         return f"{self.step.name} for {self.supply_request}"
+
+    def send_approval_email(self, request):
+        try:
+            subject = f'***审批: {self.supply_request.reason}'
+            from_email = settings.DEFAULT_FROM_EMAIL
+            recipient_list = [self.approver.email]
+
+            if self.approver.email.endswith('@163.com') or self.approver.email.endswith('njau.edu.cn'): # 163邮箱
+                message = f"""
+                申请人: {self.supply_request.employee.username} <br />
+                申请原因: {self.supply_request.reason} <br />
+
+                点击以下链接进行审批: <br />
+                <a href="{self.get_approve_url(request)}">批准</a> &nbsp;&nbsp;&nbsp;
+                <a href="{self.get_reject_url(request)}">拒绝</a>
+                """
+                # send_mail(subject,"", settings.DEFAULT_FROM_EMAIL, [self.approver.email], html_message=message)
+                send_mail(subject,"", from_email, recipient_list, html_message=message) 
+            elif self.approver.email.endswith('@qq.com'): # qq邮箱
+                message = f"""
+                申请人: {self.supply_request.employee.username}
+                申请原因: {self.supply_request.reason}
+
+                点击以下链接进行审批:
+                批准: {self.get_approve_url(request)}
+                拒绝: {self.get_reject_url(request)}
+                """
+                send_mail(
+                    subject,
+                    message,
+                    from_email,
+                    recipient_list,
+                    fail_silently=False,
+                )
+            else:
+                pass    
+
+            # print(html_message)
+            # 163邮箱 写法
+            # html_message = '<p>尊敬的用户您好！</p>' \
+            #            '<p>感谢您使用XXXX。</p>' \
+            #            '<p>您的邮箱为：%s 。请点击此链接激活您的邮箱：</p>' \
+            #            '<p><a href="%s">%s<a></p>' % ('22@qq.com', f'http://127.0.0.1:8000/app01/reject/465bee060fdd461faa72355a9b13ee84/', '222')
+            # # send_mail(subject,"", settings.DEFAULT_FROM_EMAIL, [self.approver.email], html_message=html_message)
+            # msg='<a href="http://xxx" target="_blank">点击激活</a>'
+            # send_mail('注册激活','',settings.DEFAULT_FROM_EMAIL, ['t2024087@njau.edu.cn'], html_message=msg)
+            # send_mail(subject,'',settings.DEFAULT_FROM_EMAIL, [self.approver.email], html_message=html_message)
+
+            self.email_sent_at = timezone.now()
+            self.save(update_fields=['email_sent_at'])
+            
+            logger.info(f"Approval email sent successfully to {self.approver.email}")
+        except Exception as e:
+            logger.error(f"Failed to send approval email: {str(e)}")
+            raise
+
+    def get_approve_url(self, request):
+        return request.build_absolute_uri(reverse('approve_request', args=[self.approval_token]))
+
+    def get_reject_url(self, request):
+        return request.build_absolute_uri(reverse('reject_request', args=[self.approval_token]))
