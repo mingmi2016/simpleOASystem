@@ -144,44 +144,7 @@ def approve_leave_request(request, pk):
         leave_request.save()
     return redirect('leave_request_detail', pk=pk)
 
-@login_required
-@transaction.atomic
-def create_supply_request(request):
-    if request.method == 'POST':
-        form = SupplyRequestForm(request.POST)
-        formset = OfficeSupplyItemFormSet(request.POST)
-        if form.is_valid() and formset.is_valid():
-            supply_request = form.save(commit=False)
-            supply_request.employee = request.user
-            supply_request.save()
-            
-            formset.instance = supply_request
-            formset.save()
-            
-            # 创建初始审批记录
-            first_step = ApprovalStep.objects.first()
-            if first_step:
-                approval = RequestApproval.objects.create(
-                    supply_request=supply_request,
-                    approver=first_step.approver_user,
-                    step=first_step,
-                    status='pending',
-                    approval_token=RequestApproval.generate_token()
-                )
-                logger.info(f"Created approval record: {approval}")
-            else:
-                logger.error("No ApprovalStep found")
-            
-            # 重定向到审批流程页面
-            return redirect(reverse('approval_process', kwargs={'request_id': supply_request.id}))
-    else:
-        form = SupplyRequestForm()
-        formset = OfficeSupplyItemFormSet()
-    
-    return render(request, 'app01/create_supply_request.html', {
-        'form': form,
-        'formset': formset
-    })
+
 
 @login_required
 def supply_request_detail(request, pk):
@@ -226,7 +189,7 @@ def approve_request(request, token):
         else:
             supply_request.status = 'approved'
             supply_request.save()
-            messages.success(request, '审批请求已最终批准，供应请求已完成。')
+            messages.success(request, '审批请求已最终批准，供应请求完成。')
     else:
         messages.error(request, '此请求经被处理过了。')
     
@@ -236,7 +199,7 @@ def get_approver_for_step(step):
     if step.approver_user:
         return step.approver_user
     elif step.approver_group:
-        return step.approver_group.user_set.first()  # 你可能需要一个更复杂的逻辑来选择组中的审批人
+        return step.approver_group.user_set.first()  # 你可能需要一个更复杂的逻辑来选择组的审批人
     return None
 
 def update_request_status(supply_request):
@@ -389,6 +352,12 @@ def approval_history(request):
     }
     return render(request, 'app01/approval_history.html', context)
 
+@login_required
+def pending_approvals(request):
+    approvals = RequestApproval.objects.filter(approver=request.user, status='pending')
+    return render(request, 'app01/pending_approvals.html', {'approvals': approvals})
+
+
 from django.core.mail import EmailMessage
 from django.utils.encoding import force_bytes
 
@@ -419,45 +388,33 @@ def send_approval_email(self, request):
 
 @login_required
 def email_approve(request, token, action):
-    approval = get_object_or_404(RequestApproval, approval_token=token)
+    approval = get_object_or_404(RequestApproval, approval_token=token, status='pending')
     
-    if approval.is_approved is not None:
-        messages.error(request, '此审批请求已经被处理过了。')
-        return redirect('supply_request_detail', pk=approval.supply_request.id)
-
     if action == 'approve':
+        approval.status = 'approved'
         approval.is_approved = True
-        approval.comment = "通过邮件"
-        messages.success(request, '审批请已批准。')
+        messages.success(request, '申请已通邮件批准')
     elif action == 'reject':
-        approval.is_approved = False
-        approval.comment = "通过拒绝"
-        messages.warning(request, '审批请求已拒绝。')
+        approval.status = 'rejected'
+        messages.success(request, '申请已通过邮件拒绝')
     else:
-        messages.error(request, '无效的操作。')
+        messages.error(request, '无效的操作')
         return redirect('home')
-
-    approval.updated_at = timezone.now()
+    
     approval.save()
     
-    # 更新供应请求状态
-    supply_request = approval.supply_request
-    if action == 'approve':
-        next_approval = supply_request.approvals.filter(is_approved=None).first()
-        if next_approval:
-            supply_request.current_step = next_approval.step
-            supply_request.save()
-            next_approval.send_approval_email(request)
-        else:
-            supply_request.status = 'approved'
-            supply_request.current_step = None
-            supply_request.save()
-    else:
-        supply_request.status = 'rejected'
-        supply_request.current_step = None
-        supply_request.save()
-
-    return redirect('supply_request_detail', pk=supply_request.id)
+    # 检查是否需要创建下一个审批步骤
+    next_step = approval.step.get_next_step()
+    if next_step:
+        next_approval = RequestApproval.objects.create(
+            supply_request=approval.supply_request,
+            approver=next_step.approver_user,
+            step=next_step,
+            status='pending'
+        )
+        send_approval_email(request, next_approval)
+    
+    return redirect('home')
 
 def reject_request(request, token):
     approval = get_object_or_404(RequestApproval, approval_token=token)
@@ -495,52 +452,195 @@ def approval_process(request, request_id):
     }
     return render(request, 'app01/approval_process.html', context)
 
+
+
 @login_required
-def pending_approvals(request):
-    pending_approvals = RequestApproval.objects.filter(
-        approver=request.user,
-        status='pending'
-    ).select_related('supply_request', 'step')
+def approval_process_settings(request):
+    approval_steps = ApprovalStep.objects.all().order_by('order')
+    
+    if request.method == 'POST':
+        form = ApprovalStepForm(request.POST)
+        if form.is_valid():
+            form.save()
+            messages.success(request, '审批步骤已添加')
+            return redirect('approval_process_settings')
+    else:
+        form = ApprovalStepForm()
+    
+    return render(request, 'app01/approval_step_form.html', {
+        'approval_steps': approval_steps,
+        'form': form
+    })
 
-    # 为每个待审批请求获取相关的办公用品项目
-    for approval in pending_approvals:
-        approval.items = OfficeSupplyItem.objects.filter(supply_request=approval.supply_request)
+@login_required
+def edit_approval_step(request, step_id):
+    step = get_object_or_404(ApprovalStep, id=step_id)
+    if request.method == 'POST':
+        form = ApprovalStepForm(request.POST, instance=step)
+        if form.is_valid():
+            form.save()
+            messages.success(request, '审批步骤已更新')
+            return redirect('approval_process_settings')
+    else:
+        form = ApprovalStepForm(instance=step)
+    
+    return render(request, 'app01/approval_step_form.html', {
+        'form': form,
+        'step': step
+    })
 
-    context = {
-        'pending_approvals': pending_approvals
-    }
-    return render(request, 'app01/pending_approvals.html', context)
+@login_required
+def delete_approval_step(request, step_id):
+    step = get_object_or_404(ApprovalStep, id=step_id)
+    step.delete()
+    messages.success(request, '审批步骤已删除')
+    return redirect('approval_process_settings')
+
+from django.urls import reverse
+from django.core.mail import send_mail
+from django.conf import settings
+
+def send_approval_email(request, approval):
+    subject = f'办公用品申请审批 - 申请编号 {approval.supply_request.id}'
+    approve_url = request.build_absolute_uri(reverse('email_approve', args=[approval.approval_token, 'approve']))
+    reject_url = request.build_absolute_uri(reverse('email_approve', args=[approval.approval_token, 'reject']))
+    
+    message = f"""
+    ��好，
+
+    有一个新的办公用品申请需要您审批。
+
+    申请人: {approval.supply_request.employee}
+    申请原因: {approval.supply_request.reason}
+
+    申请物品:
+    {', '.join([f"{item.name} ({item.quantity})" for item in approval.supply_request.items.all()])}
+
+    请点击以下链接进行审批：
+    同意: {approve_url}
+    拒绝: {reject_url}
+
+    或者，您可以登录系统进行更详细的审批操作。
+
+    谢谢！
+    """
+    
+    send_mail(
+        subject,
+        message,
+        settings.DEFAULT_FROM_EMAIL,
+        [approval.approver.email],
+        fail_silently=False,
+    )
+
+def email_approve(request, token, action):
+    approval = get_object_or_404(RequestApproval, approval_token=token, status='pending')
+    
+    if action == 'approve':
+        approval.status = 'approved'
+        messages.success(request, '申请已通过邮件批准')
+    elif action == 'reject':
+        approval.status = 'rejected'
+        messages.success(request, '申请已通过邮件拒绝')
+    else:
+        messages.error(request, '无效的操作')
+        return redirect('home')
+    
+    approval.save()
+    
+    # 检查是否需要创建下一个审批步骤
+    next_step = approval.step.get_next_step()
+    if next_step:
+        approvers = next_step.get_approvers()
+        for approver in approvers:
+            next_approval = RequestApproval.objects.create(
+                supply_request=approval.supply_request,
+                approver=approver,
+                step=next_step,
+                status='pending'
+            )
+            send_approval_email(request, next_approval)
+    
+    return redirect('home')
 
 @login_required
 def approve_request(request, approval_id):
-    approval = get_object_or_404(RequestApproval, id=approval_id)
+    approval = get_object_or_404(RequestApproval, id=approval_id, approver=request.user, status='pending')
     
     if request.method == 'POST':
-        # 处理审批逻辑
         action = request.POST.get('action')
+        comment = request.POST.get('comment', '')
+        
         if action == 'approve':
             approval.status = 'approved'
-            approval.is_approved = True
+            messages.success(request, '申请已批准')
         elif action == 'reject':
             approval.status = 'rejected'
+            messages.success(request, '申请已拒绝')
+        else:
+            messages.error(request, '无效的操作')
+            return redirect('pending_approvals')
         
-        approval.comment = request.POST.get('comment', '')
+        approval.comment = comment
         approval.save()
         
         # 检查是否需要创建下一个审批步骤
         next_step = approval.step.get_next_step()
         if next_step:
-            RequestApproval.objects.create(
-                supply_request=approval.supply_request,
-                approver=next_step.approver_user,
-                step=next_step,
-                status='pending',
-                approval_token=RequestApproval.generate_token()
-            )
+            approvers = next_step.get_approvers()
+            for approver in approvers:
+                next_approval = RequestApproval.objects.create(
+                    supply_request=approval.supply_request,
+                    approver=approver,
+                    step=next_step,
+                    status='pending'
+                )
+                send_approval_email(request, next_approval)
         
         return redirect('pending_approvals')
     
-    context = {
-        'approval': approval
-    }
-    return render(request, 'app01/approve_request.html', context)
+    return render(request, 'app01/approve_request.html', {'approval': approval})
+
+@login_required
+def create_supply_request(request):
+    if request.method == 'POST':
+        form = SupplyRequestForm(request.POST)
+        formset = OfficeSupplyItemFormSet(request.POST)
+        if form.is_valid() and formset.is_valid():
+            supply_request = form.save(commit=False)
+            supply_request.employee = request.user
+            supply_request.save()
+            
+            for item_form in formset:
+                if item_form.cleaned_data:
+                    item = item_form.save(commit=False)
+                    item.supply_request = supply_request
+                    item.save()
+            
+            # 创建第一个审批步骤
+            first_step = ApprovalStep.objects.first()
+            if first_step:
+                approvers = first_step.get_approvers()
+                for approver in approvers:
+                    approval = RequestApproval.objects.create(
+                        supply_request=supply_request,
+                        approver=approver,
+                        step=first_step,
+                        status='pending'
+                    )
+                    send_approval_email(request, approval)
+            
+            messages.success(request, '申请已提交，等待审批')
+            return redirect('supply_request_list')
+    else:
+        form = SupplyRequestForm()
+        formset = OfficeSupplyItemFormSet()
+    
+    return render(request, 'app01/create_supply_request.html', {'form': form, 'formset': formset})
+
+
+
+
+
+
+

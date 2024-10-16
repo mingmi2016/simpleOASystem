@@ -7,27 +7,42 @@
 <form method="post">
     {% csrf_token %}
     {{ form.as_p }}
-    <h2>办公用品项目</h2>
+    <h2>物品列表</h2>
     {{ formset.management_form }}
-    <div id="office-supply-items">
+    <div id="item-formset">
         {% for form in formset %}
             <div class="item-form">
-                {{ form.as_p }}
+                {{ form.name.label_tag }} {{ form.name }}
+                {{ form.quantity.label_tag }} {{ form.quantity }}
+                {% if form.instance.pk %}{{ form.DELETE }}{% endif %}
             </div>
         {% endfor %}
     </div>
-    <button type="button" id="add-item">添加更多项目</button>
+    <button type="button" id="add-item">添加物品</button>
     <button type="submit">提交申请</button>
 </form>
 
 <script>
-    document.getElementById('add-item').addEventListener('click', function() {
-        var formCount = parseInt(document.getElementById('id_items-TOTAL_FORMS').value);
-        var newForm = document.querySelector('.item-form').cloneNode(true);
-        var regex = new RegExp('items-\\d+', 'g');
-        newForm.innerHTML = newForm.innerHTML.replace(regex, 'items-' + formCount);
-        document.getElementById('office-supply-items').appendChild(newForm);
-        document.getElementById('id_items-TOTAL_FORMS').value = formCount + 1;
+    document.addEventListener('DOMContentLoaded', function() {
+        const addItemButton = document.getElementById('add-item');
+        const itemFormset = document.getElementById('item-formset');
+        const totalFormsInput = document.getElementById('id_form-TOTAL_FORMS');
+
+        addItemButton.addEventListener('click', function() {
+            const formCount = itemFormset.children.length;
+            const newForm = itemFormset.children[0].cloneNode(true);
+            
+            // Update form index
+            newForm.innerHTML = newForm.innerHTML.replace(/-0-/g, `-${formCount}-`);
+            
+            // Clear input values
+            newForm.querySelectorAll('input').forEach(input => {
+                input.value = '';
+            });
+
+            itemFormset.appendChild(newForm);
+            totalFormsInput.value = formCount + 1;
+        });
     });
 </script>
 {% endblock %}

@@ -1,11 +1,133 @@
 {% extends 'base.html' %}
 
+{% block title %}审批流程设置{% endblock %}
+
 {% block content %}
-<h1>{% if form.instance.pk %}编辑{% else %}创建{% endif %}审批步骤</h1>
-<form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit" class="btn btn-primary">保存</button>
-    <a href="{% url 'approval_step_list' %}" class="btn btn-secondary">取消</a>
-</form>
+<div class="approval-settings">
+    <h1>审批流程设置</h1>
+
+    <div class="current-steps">
+        <h2>当前审批步骤</h2>
+        {% if approval_steps %}
+            <table class="step-table">
+                <thead>
+                    <tr>
+                        <th>步骤名称</th>
+                        <th>审批人/组</th>
+                        <th>顺序</th>
+                        <th>操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for step in approval_steps %}
+                    <tr>
+                        <td>{{ step.name }}</td>
+                        <td>
+                            {% if step.approver_user %}
+                                {{ step.approver_user.username }} (用户)
+                            {% elif step.approver_group %}
+                                {{ step.approver_group.name }} (组)
+                            {% endif %}
+                        </td>
+                        <td>{{ step.order }}</td>
+                        <td>
+                            <a href="{% url 'edit_approval_step' step.id %}" class="btn btn-edit">编辑</a>
+                            <a href="{% url 'delete_approval_step' step.id %}" class="btn btn-delete" onclick="return confirm('确定要删除这个步骤吗？');">删除</a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        {% else %}
+            <p>暂无审批步骤，请添加新步骤。</p>
+        {% endif %}
+    </div>
+
+    <div class="add-step">
+        <h2>添加新审批步骤</h2>
+        <form method="post" class="step-form">
+            {% csrf_token %}
+            {% for field in form %}
+                <div class="form-group">
+                    <label for="{{ field.id_for_label }}">{{ field.label }}:</label>
+                    {{ field }}
+                    {% if field.help_text %}
+                        <small class="help-text">{{ field.help_text }}</small>
+                    {% endif %}
+                    {% for error in field.errors %}
+                        <p class="error-message">{{ error }}</p>
+                    {% endfor %}
+                </div>
+            {% endfor %}
+            <button type="submit" class="btn btn-primary">添加步骤</button>
+        </form>
+    </div>
+</div>
+
+<style>
+    .approval-settings {
+        max-width: 800px;
+        margin: 0 auto;
+    }
+    .step-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 20px;
+    }
+    .step-table th, .step-table td {
+        border: 1px solid #ddd;
+        padding: 8px;
+        text-align: left;
+    }
+    .step-table th {
+        background-color: var(--primary-color);
+        color: white;
+    }
+    .step-table tr:nth-child(even) {
+        background-color: #f2f2f2;
+    }
+    .btn {
+        display: inline-block;
+        padding: 5px 10px;
+        margin: 2px;
+        border: none;
+        border-radius: 3px;
+        cursor: pointer;
+        text-decoration: none;
+        color: white;
+    }
+    .btn-edit {
+        background-color: #4CAF50;
+    }
+    .btn-delete {
+        background-color: #f44336;
+    }
+    .btn-primary {
+        background-color: var(--primary-color);
+    }
+    .form-group {
+        margin-bottom: 15px;
+    }
+    .form-group label {
+        display: block;
+        margin-bottom: 5px;
+    }
+    .form-group input, .form-group select {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ddd;
+        border-radius: 3px;
+    }
+    .help-text {
+        display: block;
+        color: #666;
+        font-size: 0.9em;
+        margin-top: 2px;
+    }
+    .error-message {
+        color: #f44336;
+        font-size: 0.9em;
+        margin-top: 2px;
+    }
+</style>
 {% endblock %}

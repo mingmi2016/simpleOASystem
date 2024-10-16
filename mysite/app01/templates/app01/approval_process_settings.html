@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>审批流程设置</h1>
+
+<h2>当前审批步骤</h2>
+<table>
+    <thead>
+        <tr>
+            <th>步骤名称</th>
+            <th>审批人/组</th>
+            <th>顺序</th>
+            <th>操作</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for step in approval_steps %}
+        <tr>
+            <td>{{ step.name }}</td>
+            <td>
+                {% if step.approver_user %}
+                    {{ step.approver_user.username }} (用户)
+                {% elif step.approver_group %}
+                    {{ step.approver_group.name }} (组)
+                {% endif %}
+            </td>
+            <td>{{ step.order }}</td>
+            <td>
+                <a href="{% url 'edit_approval_step' step.id %}">编辑</a> |
+                <a href="{% url 'delete_approval_step' step.id %}">删除</a>
+            </td>
+        </tr>
+        {% empty %}
+        <tr>
+            <td colspan="4">暂无审批步骤</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+
+<h2>添加新审批步骤</h2>
+<form method="post">
+    {% csrf_token %}
+    {{ form.as_p }}
+    <button type="submit">添加步骤</button>
+</form>
+{% endblock %}

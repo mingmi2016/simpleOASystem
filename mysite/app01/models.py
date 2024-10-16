@@ -42,38 +42,27 @@ class LeaveRequest(models.Model):
         return f"{self.employee}'s {self.get_leave_type_display()} from {self.start_date} to {self.end_date}"
 
 class ApprovalStep(models.Model):
-    """
-    审批步骤模型
-    
-    用于定义审批流程中的各个步骤，包括步骤名称、顺序、审批组和指定审批人。
-    """
-    name = models.CharField(max_length=100, verbose_name="步骤名称")
-    order = models.PositiveIntegerField(verbose_name="步骤顺序")
-    approver_group = models.ForeignKey(
-        Group, 
-        on_delete=models.SET_NULL, 
-        null=True, 
-        blank=True, 
-        verbose_name="审批组"
-    )
-    approver_user = models.ForeignKey(
-        User, 
-        on_delete=models.SET_NULL, 
-        null=True, 
-        blank=True, 
-        verbose_name="指定审批人"
-    )
+    name = models.CharField(max_length=100)
+    approver_user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    approver_group = models.ForeignKey(Group, on_delete=models.CASCADE, null=True, blank=True)
+    order = models.PositiveIntegerField(unique=True)
+
+    def __str__(self):
+        approver = self.approver_user.username if self.approver_user else self.approver_group.name
+        return f"{self.name} - Step {self.order} ({approver})"
 
     class Meta:
         ordering = ['order']
-        verbose_name = "审批步骤"
-        verbose_name_plural = "审批步骤"
-
-    def __str__(self):
-        return f"{self.name} (Step {self.order})"
 
     def get_next_step(self):
         return ApprovalStep.objects.filter(order__gt=self.order).order_by('order').first()
+
+    def get_approvers(self):
+        if self.approver_user:
+            return [self.approver_user]
+        elif self.approver_group:
+            return self.approver_group.user_set.all()
+        return []
 
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
@@ -165,7 +154,7 @@ class SupplyRequest(models.Model):
         verbose_name_plural = "办公用品申请"
 
     def __str__(self):
-        return f"Supply Request by {self.employee.username}"
+        return f"Supply Request {self.id}"
 
     def get_current_approval(self):
         return self.approvals.filter(step=self.current_step).first()
@@ -193,13 +182,16 @@ class SupplyRequest(models.Model):
         
         return None
 
+    def is_approved(self):
+        return all(approval.status == 'approved' for approval in self.requestapproval_set.all())
+
 class OfficeSupplyItem(models.Model):
     supply_request = models.ForeignKey(SupplyRequest, on_delete=models.CASCADE, related_name='items')
-    supply_option = models.ForeignKey('OfficeSupplyOption', on_delete=models.CASCADE)
+    name = models.CharField(max_length=100, default='未指定物品')  # 添加默认值
     quantity = models.PositiveIntegerField()
 
     def __str__(self):
-        return f"{self.supply_option.name} (x{self.quantity})"
+        return f"{self.name} ({self.quantity})"
 
 
 
@@ -223,7 +215,7 @@ class RequestApproval(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
     is_approved = models.BooleanField(default=False)
-    approval_token = models.CharField(max_length=100, unique=True)
+    approval_token = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
     email_sent_at = models.DateTimeField(null=True, blank=True)
 
     def __str__(self):
@@ -276,7 +268,7 @@ class RequestApproval(models.Model):
             #            '<p>您的邮箱为：%s 。请点击此链接激活您的邮箱：</p>' \
             #            '<p><a href="%s">%s<a></p>' % ('22@qq.com', f'http://127.0.0.1:8000/app01/reject/465bee060fdd461faa72355a9b13ee84/', '222')
             # # send_mail(subject,"", settings.DEFAULT_FROM_EMAIL, [self.approver.email], html_message=html_message)
-            # msg='<a href="http://xxx" target="_blank">��击激活</a>'
+            # msg='<a href="http://xxx" target="_blank">击激活</a>'
             # send_mail('注册激活','',settings.DEFAULT_FROM_EMAIL, ['t2024087@njau.edu.cn'], html_message=msg)
             # send_mail(subject,'',settings.DEFAULT_FROM_EMAIL, [self.approver.email], html_message=html_message)
 
@@ -293,3 +285,10 @@ class RequestApproval(models.Model):
 
     def get_reject_url(self, request):
         return request.build_absolute_uri(reverse('reject_request', args=[self.approval_token]))
+
+
+
+
+
+
+
