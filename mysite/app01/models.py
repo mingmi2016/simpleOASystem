@@ -113,7 +113,7 @@ class OfficeSupply(models.Model):
         return self.name
 
 class OfficeSupplyOption(models.Model):
-    name = models.CharField(max_length=100, unique=True)
+    name = models.CharField(max_length=100)
 
     def __str__(self):
         return self.name
@@ -187,11 +187,11 @@ class SupplyRequest(models.Model):
 
 class OfficeSupplyItem(models.Model):
     supply_request = models.ForeignKey(SupplyRequest, on_delete=models.CASCADE, related_name='items')
-    name = models.CharField(max_length=100, default='未指定物品')  # 添加默认值
+    supply_option = models.ForeignKey(OfficeSupplyOption, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField()
 
     def __str__(self):
-        return f"{self.name} ({self.quantity})"
+        return f"{self.supply_option.name} ({self.quantity})"
 
 
 

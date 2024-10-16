@@ -1,49 +1,97 @@
 {% extends 'base.html' %}
 
+{% block title %}待审批请求{% endblock %}
+
 {% block content %}
-<h1>待审批请求</h1>
-{% if pending_approvals %}
-    <table border="1">
-        <thead>
-            <tr>
-                <th>供应请求</th>
-                <th>申请人</th>
-                <th>申请原因</th>
-                <th>办公用品</th>
-                <th>数量</th>
-                <th>步骤</th>
-                <th>创建时间</th>
-                <th>操作</th>
-            </tr>
-        </thead>
-        <tbody>
-        {% for approval in pending_approvals %}
-            <tr>
-                <td>{{ approval.supply_request }}</td>
-                <td>{{ approval.supply_request.employee }}</td>
-                <td>{{ approval.supply_request.reason }}</td>
-                <td>
-                    <ul>
-                    {% for item in approval.items %}
-                        <li>{{ item.supply_option.name }}</li>
-                    {% endfor %}
-                    </ul>
-                </td>
-                <td>
-                    <ul>
-                    {% for item in approval.items %}
-                        <li>{{ item.quantity }}</li>
-                    {% endfor %}
-                    </ul>
-                </td>
-                <td>{{ approval.step.name }}</td>
-                <td>{{ approval.created_at }}</td>
-                <td><a href="{% url 'approve_request' approval.id %}">审批</a></td>
-            </tr>
-        {% endfor %}
-        </tbody>
-    </table>
-{% else %}
-    <p>没有待审批的请求。</p>
-{% endif %}
+<div class="container">
+    <h1 class="page-title">待审批请求</h1>
+    {% if approvals %}
+        <table class="approval-table">
+            <thead>
+                <tr>
+                    <th>申请人</th>
+                    <th>申请原因</th>
+                    <th>申请物品</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for approval in approvals %}
+                    <tr>
+                        <td>{{ approval.supply_request.employee }}</td>
+                        <td>{{ approval.supply_request.reason }}</td>
+                        <td>
+                            <ul class="item-list">
+                            {% for item in approval.supply_request.items.all %}
+                                <li>{{ item.supply_option.name }} ({{ item.quantity }})</li>
+                            {% endfor %}
+                            </ul>
+                        </td>
+                        <td>
+                            <a href="{% url 'approve_request' approval.id %}" class="btn btn-primary">审批</a>
+                        </td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="no-approvals">没有待审批的请求。</p>
+    {% endif %}
+</div>
+
+<style>
+    .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    .page-title {
+        color: #333;
+        margin-bottom: 20px;
+    }
+    .approval-table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-top: 20px;
+    }
+    .approval-table th, .approval-table td {
+        border: 1px solid #ddd;
+        padding: 12px;
+        text-align: left;
+    }
+    .approval-table th {
+        background-color: #f2f2f2;
+        font-weight: bold;
+    }
+    .approval-table tr:nth-child(even) {
+        background-color: #f9f9f9;
+    }
+    .approval-table tr:hover {
+        background-color: #f5f5f5;
+    }
+    .item-list {
+        list-style-type: none;
+        padding: 0;
+        margin: 0;
+    }
+    .item-list li {
+        margin-bottom: 5px;
+    }
+    .btn {
+        display: inline-block;
+        padding: 8px 12px;
+        background-color: #007bff;
+        color: white;
+        text-decoration: none;
+        border-radius: 4px;
+        transition: background-color 0.3s;
+    }
+    .btn:hover {
+        background-color: #0056b3;
+    }
+    .no-approvals {
+        color: #666;
+        font-style: italic;
+    }
+</style>
 {% endblock %}

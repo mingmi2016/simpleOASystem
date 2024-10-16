@@ -27,11 +27,26 @@ class SupplyRequestForm(forms.ModelForm):
         model = SupplyRequest
         fields = ['reason']
 
+class OfficeSupplyItemForm(forms.ModelForm):
+    supply_option = forms.ModelChoiceField(
+        queryset=OfficeSupplyOption.objects.all(),
+        empty_label="请选择办公用品",
+        widget=forms.Select(attrs={'class': 'form-control'})
+    )
+
+    class Meta:
+        model = OfficeSupplyItem
+        fields = ['supply_option', 'quantity']
+        widgets = {
+            'supply_option': forms.Select(attrs={'class': 'form-control'}),
+            'quantity': forms.NumberInput(attrs={'class': 'form-control'}),
+        }
+
 OfficeSupplyItemFormSet = inlineformset_factory(
-    SupplyRequest, 
-    OfficeSupplyItem, 
-    fields=('name', 'quantity'),  # 确保这里只包含模型中存在的字段
-    extra=1, 
+    SupplyRequest,  # 父模型
+    OfficeSupplyItem,  # 子模型
+    form=OfficeSupplyItemForm,
+    extra=1,
     can_delete=True
 )
 

@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect, get_object_or_404
 from django.contrib.auth.decorators import login_required, user_passes_test
-from .models import LeaveRequest, ApprovalStep, SupplyRequest, OfficeSupplyItem
+from .models import LeaveRequest, ApprovalStep, SupplyRequest, OfficeSupplyItem, OfficeSupplyOption
 from .forms import LeaveRequestForm, SupplyRequestForm, OfficeSupplyItemFormSet, RequestApprovalForm
 from django.utils import timezone
 from django.db import transaction
@@ -364,7 +364,7 @@ from django.utils.encoding import force_bytes
 def send_approval_email(self, request):
     subject = f'审批请求: {self.supply_request.reason}'
     message = f"""
-    申请人: {self.supply_request.employee.username}
+    请人: {self.supply_request.employee.username}
     申请原因: {self.supply_request.reason}
 
     点击以链接行审批:
@@ -393,7 +393,7 @@ def email_approve(request, token, action):
     if action == 'approve':
         approval.status = 'approved'
         approval.is_approved = True
-        messages.success(request, '申请已通邮件批准')
+        messages.success(request, '申请已通件批准')
     elif action == 'reject':
         approval.status = 'rejected'
         messages.success(request, '申请已通过邮件拒绝')
@@ -506,7 +506,7 @@ def send_approval_email(request, approval):
     reject_url = request.build_absolute_uri(reverse('email_approve', args=[approval.approval_token, 'reject']))
     
     message = f"""
-    ��好，
+    您好，
 
     有一个新的办公用品申请需要您审批。
 
@@ -514,7 +514,7 @@ def send_approval_email(request, approval):
     申请原因: {approval.supply_request.reason}
 
     申请物品:
-    {', '.join([f"{item.name} ({item.quantity})" for item in approval.supply_request.items.all()])}
+    {', '.join([f"{item.supply_option.name} ({item.quantity})" for item in approval.supply_request.items.all()])}
 
     请点击以下链接进行审批：
     同意: {approve_url}
@@ -636,7 +636,15 @@ def create_supply_request(request):
         form = SupplyRequestForm()
         formset = OfficeSupplyItemFormSet()
     
-    return render(request, 'app01/create_supply_request.html', {'form': form, 'formset': formset})
+    context = {
+        'form': form,
+        'formset': formset,
+        'supply_options': OfficeSupplyOption.objects.all()
+    }
+    return render(request, 'app01/create_supply_request.html', context)
+
+
+
 
 
 

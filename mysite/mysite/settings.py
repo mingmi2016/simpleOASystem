@@ -38,7 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',  # 确保这里只出现一次
     'django.contrib.staticfiles',
     'app01.apps.App01Config',
-    # ... 你的其他应用 ...
+    # ... 你其他应用 ...
 ]
 
 MIDDLEWARE = [
@@ -124,7 +124,7 @@ AUTH_PASSWORD_VALIDATORS = [
 
 LANGUAGE_CODE = 'en-us'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Shanghai'
 
 USE_I18N = True
 
@@ -167,3 +167,23 @@ EMAIL_HOST_USER = 't2024087@njau.edu.cn'  # 发送服务器用户名
 EMAIL_HOST_PASSWORD = 'D4ss8brL5WKAq7ry'  # 授权码
 # EMAIL_FROM = '南农水稻所审批<t2024087@njau.edu.cn>' #收件人看到的发件人
 DEFAULT_FROM_EMAIL = '南农种子申请审批<t2024087@njau.edu.cn>' #收件人看到的发件人
+
+# 添加日志配置
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'handlers': {
+        'file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': 'debug.log',
+        },
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['file'],
+            'level': 'DEBUG',
+            'propagate': True,
+        },
+    },
+}
