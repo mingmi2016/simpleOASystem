@@ -7,10 +7,16 @@
 <form method="post">
     {% csrf_token %}
     {{ form.as_p }}
+    <h2>办公用品项目</h2>
     {{ formset.management_form }}
-    {% for form in formset %}
-        {{ form.as_p }}
-    {% endfor %}
+    <div id="office-supply-items">
+        {% for form in formset %}
+            <div class="item-form">
+                {{ form.as_p }}
+            </div>
+        {% endfor %}
+    </div>
+    <button type="button" id="add-item">添加更多项目</button>
     <button type="submit">提交申请</button>
 </form>
 
@@ -18,8 +24,9 @@
     document.getElementById('add-item').addEventListener('click', function() {
         var formCount = parseInt(document.getElementById('id_items-TOTAL_FORMS').value);
         var newForm = document.querySelector('.item-form').cloneNode(true);
-        newForm.innerHTML = newForm.innerHTML.replace(/items-(\d+)/g, 'items-' + formCount);
-        document.getElementById('item-formset').appendChild(newForm);
+        var regex = new RegExp('items-\\d+', 'g');
+        newForm.innerHTML = newForm.innerHTML.replace(regex, 'items-' + formCount);
+        document.getElementById('office-supply-items').appendChild(newForm);
         document.getElementById('id_items-TOTAL_FORMS').value = formCount + 1;
     });
 </script>

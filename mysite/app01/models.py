@@ -5,6 +5,7 @@ from django.dispatch import receiver
 from .utils import generate_approval_token
 from django.utils import timezone
 import smtplib
+import uuid
 
 from django.core.mail import send_mail
 from django.utils.encoding import force_str
@@ -71,6 +72,9 @@ class ApprovalStep(models.Model):
     def __str__(self):
         return f"{self.name} (Step {self.order})"
 
+    def get_next_step(self):
+        return ApprovalStep.objects.filter(order__gt=self.order).order_by('order').first()
+
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     is_manager = models.BooleanField(default=False)  # 这里缺少默认值
@@ -119,6 +123,15 @@ class OfficeSupply(models.Model):
     def __str__(self):
         return self.name
 
+class OfficeSupplyOption(models.Model):
+    name = models.CharField(max_length=100, unique=True)
+
+    def __str__(self):
+        return self.name
+
+def get_default_supply_option():
+    return OfficeSupplyOption.objects.first().id
+
 class SupplyRequest(models.Model):
     """
     办公用品申请模型
@@ -130,19 +143,10 @@ class SupplyRequest(models.Model):
         ('approved', '已批准'),
         ('rejected', '已拒绝'),
     )
-    employee = models.ForeignKey(
-        User, 
-        on_delete=models.CASCADE, 
-        related_name='supply_requests', 
-        verbose_name="申请人"
-    )
-    reason = models.TextField(verbose_name="申请原因")
-    status = models.CharField(
-        max_length=10, 
-        choices=STATUS_CHOICES, 
-        default='pending', 
-        verbose_name="申请状态"
-    )
+    employee = models.ForeignKey(User, on_delete=models.CASCADE, related_name='supply_requests')
+    reason = models.TextField()
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    created_at = models.DateTimeField(auto_now_add=True)
     current_step = models.ForeignKey(
         ApprovalStep, 
         on_delete=models.SET_NULL, 
@@ -151,7 +155,6 @@ class SupplyRequest(models.Model):
         related_name='current_requests', 
         verbose_name="当前审批步骤"
     )
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
     updated_at = models.DateTimeField(auto_now=True, verbose_name="更新时间")
     current_approver = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='current_approvals')
     next_approver = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='next_approvals')
@@ -162,7 +165,7 @@ class SupplyRequest(models.Model):
         verbose_name_plural = "办公用品申请"
 
     def __str__(self):
-        return f"{self.employee}'s request on {self.created_at.date()}"
+        return f"Supply Request by {self.employee.username}"
 
     def get_current_approval(self):
         return self.approvals.filter(step=self.current_step).first()
@@ -190,31 +193,15 @@ class SupplyRequest(models.Model):
         
         return None
 
-class SupplyRequestItem(models.Model):
-    """
-    申请物品明细模型
-    
-    用于记录每个申请中具体申请的物品及其数量。
-    """
-    supply_request = models.ForeignKey(
-        SupplyRequest, 
-        on_delete=models.CASCADE, 
-        related_name='items', 
-        verbose_name="所属申请"
-    )
-    supply = models.ForeignKey(
-        'OfficeSupply', 
-        on_delete=models.CASCADE, 
-        verbose_name="申请物品"
-    )
-    quantity = models.PositiveIntegerField(verbose_name="申请数量")
-
-    class Meta:
-        verbose_name = "申请物品明细"
-        verbose_name_plural = "申请物品明细"
+class OfficeSupplyItem(models.Model):
+    supply_request = models.ForeignKey(SupplyRequest, on_delete=models.CASCADE, related_name='items')
+    supply_option = models.ForeignKey('OfficeSupplyOption', on_delete=models.CASCADE)
+    quantity = models.PositiveIntegerField()
 
     def __str__(self):
-        return f"{self.supply.name} ({self.quantity}) for {self.supply_request}"
+        return f"{self.supply_option.name} (x{self.quantity})"
+
+
 
 class RequestApproval(models.Model):
     """
@@ -228,37 +215,23 @@ class RequestApproval(models.Model):
         ('rejected', '已拒绝'),
     )
 
-    supply_request = models.ForeignKey('SupplyRequest', on_delete=models.CASCADE)
-    step = models.ForeignKey(
-        ApprovalStep, 
-        on_delete=models.CASCADE, 
-        verbose_name="审批步骤"
-    )
-    approver = models.ForeignKey(
-        settings.AUTH_USER_MODEL, 
-        on_delete=models.CASCADE, 
-        verbose_name="审批人"
-    )
-    is_approved = models.BooleanField(null=True, blank=True, verbose_name="是否批准")
-    comment = models.TextField(blank=True, verbose_name="审批意见")
-    created_at = models.DateTimeField(auto_now_add=True, verbose_name="创建时间")
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="更新时间")
-    approval_token = models.CharField(max_length=32, unique=True, default=generate_approval_token)
+    supply_request = models.ForeignKey(SupplyRequest, on_delete=models.CASCADE, related_name='approvals')
+    approver = models.ForeignKey(User, on_delete=models.CASCADE)
+    step = models.ForeignKey(ApprovalStep, on_delete=models.CASCADE)
+    status = models.CharField(max_length=20, choices=[('pending', 'Pending'), ('approved', 'Approved'), ('rejected', 'Rejected')])
+    comment = models.TextField(blank=True, null=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    is_approved = models.BooleanField(default=False)
+    approval_token = models.CharField(max_length=100, unique=True)
     email_sent_at = models.DateTimeField(null=True, blank=True)
-    status = models.CharField(
-        max_length=10,
-        choices= STATUS_CHOICES,
-        default='pending',
-        verbose_name='审批状态'
-    )
-
-    class Meta:
-        ordering = ['step__order']
-        verbose_name = "审批记录"
-        verbose_name_plural = "审批记录"
 
     def __str__(self):
-        return f"{self.step.name} for {self.supply_request}"
+        return f"Approval for {self.supply_request} by {self.approver}"
+
+    @staticmethod
+    def generate_token():
+        return uuid.uuid4().hex
 
     def send_approval_email(self, request):
         try:
@@ -271,7 +244,7 @@ class RequestApproval(models.Model):
                 申请人: {self.supply_request.employee.username} <br />
                 申请原因: {self.supply_request.reason} <br />
 
-                点击以下链接进行审批: <br />
+                点击以下链进行审批: <br />
                 <a href="{self.get_approve_url(request)}">批准</a> &nbsp;&nbsp;&nbsp;
                 <a href="{self.get_reject_url(request)}">拒绝</a>
                 """
@@ -282,7 +255,7 @@ class RequestApproval(models.Model):
                 申请人: {self.supply_request.employee.username}
                 申请原因: {self.supply_request.reason}
 
-                点击以下链接进行审批:
+                点击以下接进行审批:
                 批准: {self.get_approve_url(request)}
                 拒绝: {self.get_reject_url(request)}
                 """
@@ -303,7 +276,7 @@ class RequestApproval(models.Model):
             #            '<p>您的邮箱为：%s 。请点击此链接激活您的邮箱：</p>' \
             #            '<p><a href="%s">%s<a></p>' % ('22@qq.com', f'http://127.0.0.1:8000/app01/reject/465bee060fdd461faa72355a9b13ee84/', '222')
             # # send_mail(subject,"", settings.DEFAULT_FROM_EMAIL, [self.approver.email], html_message=html_message)
-            # msg='<a href="http://xxx" target="_blank">点击激活</a>'
+            # msg='<a href="http://xxx" target="_blank">��击激活</a>'
             # send_mail('注册激活','',settings.DEFAULT_FROM_EMAIL, ['t2024087@njau.edu.cn'], html_message=msg)
             # send_mail(subject,'',settings.DEFAULT_FROM_EMAIL, [self.approver.email], html_message=html_message)
 

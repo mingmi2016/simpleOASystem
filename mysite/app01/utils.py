@@ -1,4 +1,4 @@
-
+import uuid
 
 def get_approvers(employee):
     approvers = []
@@ -8,3 +8,6 @@ def get_approvers(employee):
         approvers.append((employee.profile.department.head, 2))
     # 可以添加更多的逻辑来确定其他审批人
     return approvers
+
+def generate_approval_token():
+    return uuid.uuid4().hex

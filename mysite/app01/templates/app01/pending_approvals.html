@@ -1,48 +1,49 @@
 {% extends 'base.html' %}
 
-{% block title %}我的办公用品申请{% endblock %}
-
 {% block content %}
-<h1>我的办公用品申请</h1>
-{% if supply_requests %}
+<h1>待审批请求</h1>
+{% if pending_approvals %}
     <table border="1">
         <thead>
             <tr>
-                <th>申请编号</th>
+                <th>供应请求</th>
+                <th>申请人</th>
                 <th>申请原因</th>
                 <th>办公用品</th>
                 <th>数量</th>
-                <th>状态</th>
+                <th>步骤</th>
                 <th>创建时间</th>
+                <th>操作</th>
             </tr>
         </thead>
         <tbody>
-        {% for request_data in supply_requests %}
+        {% for approval in pending_approvals %}
             <tr>
-                <td>{{ request_data.request.id }}</td>
-                <td>{{ request_data.request.reason }}</td>
+                <td>{{ approval.supply_request }}</td>
+                <td>{{ approval.supply_request.employee }}</td>
+                <td>{{ approval.supply_request.reason }}</td>
                 <td>
                     <ul>
-                    {% for item in request_data.items %}
+                    {% for item in approval.items %}
                         <li>{{ item.supply_option.name }}</li>
                     {% endfor %}
                     </ul>
                 </td>
                 <td>
                     <ul>
-                    {% for item in request_data.items %}
+                    {% for item in approval.items %}
                         <li>{{ item.quantity }}</li>
                     {% endfor %}
                     </ul>
                 </td>
-                <td>{{ request_data.request.status }}</td>
-                <td>{{ request_data.request.created_at }}</td>
+                <td>{{ approval.step.name }}</td>
+                <td>{{ approval.created_at }}</td>
+                <td><a href="{% url 'approve_request' approval.id %}">审批</a></td>
             </tr>
         {% endfor %}
         </tbody>
     </table>
 {% else %}
-    <p>你还没有提交过办公用品申请。</p>
+    <p>没有待审批的请求。</p>
 {% endif %}
-<a href="{% url 'create_supply_request' %}">新建申请</a>
 {% endblock %}

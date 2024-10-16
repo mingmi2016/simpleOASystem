@@ -1,5 +1,6 @@
 from django import forms
-from .models import LeaveRequest, SupplyRequest, RequestApproval, SupplyRequestItem, OfficeSupply, ApprovalStep
+from django.forms import inlineformset_factory
+from .models import LeaveRequest, SupplyRequest, RequestApproval, OfficeSupply, ApprovalStep, OfficeSupplyItem, OfficeSupplyOption
 
 class LeaveRequestForm(forms.ModelForm):
     class Meta:
@@ -26,16 +27,11 @@ class SupplyRequestForm(forms.ModelForm):
         model = SupplyRequest
         fields = ['reason']
 
-class SupplyRequestItemForm(forms.ModelForm):
-    class Meta:
-        model = SupplyRequestItem
-        fields = ['supply', 'quantity']
-
-SupplyRequestItemFormSet = forms.inlineformset_factory(
+OfficeSupplyItemFormSet = inlineformset_factory(
     SupplyRequest, 
-    SupplyRequestItem, 
-    fields=['supply', 'quantity'], 
-    extra=1, 
+    OfficeSupplyItem,
+    fields=['supply_option', 'quantity'],
+    extra=1,
     can_delete=True
 )
 

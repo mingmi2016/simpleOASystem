@@ -1,0 +1,6 @@
+<form method="post" action="{% url 'create_supply_request' %}">
+    {% csrf_token %}
+    <!-- 表单字段 -->
+    <button type="submit">Submit</button>
+</form>
+<a href="{% url 'supply_request_list' %}">Back to list</a>

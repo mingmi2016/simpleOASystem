@@ -1,0 +1,26 @@
+{% extends 'base.html' %}
+
+{% block content %}
+<h1>审批流程</h1>
+<h2>供应请求: {{ supply_request }}</h2>
+
+<h3>审批步骤:</h3>
+<ul>
+{% for approval in approvals %}
+    <li>
+        步骤 {{ approval.step.order }}: {{ approval.step.name }} - 
+        审批人: {{ approval.approver }} - 
+        状态: {{ approval.get_status_display }}
+        {% if approval.status == 'approved' %}
+            - 批准时间: {{ approval.updated_at }}
+        {% elif approval.status == 'rejected' %}
+            - 拒绝时间: {{ approval.updated_at }}
+        {% endif %}
+    </li>
+{% empty %}
+    <li>暂无审批步骤</li>
+{% endfor %}
+</ul>
+
+<a href="{% url 'supply_request_list' %}">返回申请列表</a>
+{% endblock %}

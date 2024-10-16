@@ -35,9 +35,10 @@ INSTALLED_APPS = [
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
-    'django.contrib.messages',
+    'django.contrib.messages',  # 确保这里只出现一次
     'django.contrib.staticfiles',
     'app01.apps.App01Config',
+    # ... 你的其他应用 ...
 ]
 
 MIDDLEWARE = [
@@ -89,7 +90,8 @@ DATABASES = {
         'PORT': 3306,
         'OPTIONS': {
             'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
-            },
+            'charset': 'utf8mb4',
+        },
     }
 
 }
@@ -141,3 +143,27 @@ LOGOUT_REDIRECT_URL = '/accounts/login/'  # 登出后重定向到登录页面
 LOGIN_URL = '/accounts/login/'  # 设置登录 URL
 
 DEFAULT_APPROVER_USERNAME = 'admin'  # 或者其他默认审批人的用户名
+
+# Email settings for qq
+# EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+# EMAIL_HOST = 'smtp.qq.com'
+# # EMAIL_HOST = 'smtp.exmail.qq.com'
+# EMAIL_PORT =  465 
+# EMAIL_USE_TLS = True 
+# EMAIL_USE_SSL = False 
+# EMAIL_HOST_USER = '2321043623@qq.com'
+# EMAIL_HOST_PASSWORD = 'kjaxphskhdtgecgf' #授权码
+# # EMAIL_HOST_PASSWORD = 'guwfyegmvhikdjci' #授权码
+# # EMAIL_TIMEOUT = 60  # 设置为60秒
+
+
+# Email settings for 163
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'  # 模块
+EMAIL_USE_TLS = True  # 是否使用TLS安全传输协议(用于在两个通信应用程序之间提供保密性和数据完整性)
+EMAIL_USE_SSL = False  # 是否使用SSL加密，qq企业邮箱要求使用，163邮箱设置为True的时候会报ssl的错误
+EMAIL_HOST = 'pophz.qiye.163.com'  # 发送方 smtp 服务器地址
+EMAIL_PORT = 25  # 默认 smtp 端口
+EMAIL_HOST_USER = 't2024087@njau.edu.cn'  # 发送服务器用户名
+EMAIL_HOST_PASSWORD = 'D4ss8brL5WKAq7ry'  # 授权码
+# EMAIL_FROM = '南农水稻所审批<t2024087@njau.edu.cn>' #收件人看到的发件人
+DEFAULT_FROM_EMAIL = '南农种子申请审批<t2024087@njau.edu.cn>' #收件人看到的发件人
