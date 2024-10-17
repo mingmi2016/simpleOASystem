@@ -20,6 +20,11 @@ urlpatterns = [
     path('approval-process/<int:request_id>/', views.approval_process, name='approval_process'),
     path('pending-approvals/', views.pending_approvals, name='pending_approvals'),
     path('approval-process-settings/', views.approval_process_settings, name='approval_process_settings'),
+    path('update-step-order/', views.update_step_order, name='update_step_order'),
     path('delete-approval-step/<int:step_id>/', views.delete_approval_step, name='delete_approval_step'),
     path('edit-approval-step/<int:step_id>/', views.edit_approval_step, name='edit_approval_step'),
+    path('approve-email/<int:approval_id>/<str:uidb64>/<str:token>/', views.approve_request_email, name='approve_request_email'),
+    path('reject-email/<int:approval_id>/<str:uidb64>/<str:token>/', views.reject_request_email, name='reject_request_email'),
+    path('approval-success/', views.approval_success, name='approval_success'),
+    path('approval-error/', views.approval_error, name='approval_error'),
 ]

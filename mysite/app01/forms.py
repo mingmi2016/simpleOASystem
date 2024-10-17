@@ -62,14 +62,19 @@ class RequestApprovalForm(forms.ModelForm):
 class ApprovalStepForm(forms.ModelForm):
     class Meta:
         model = ApprovalStep
-        fields = ['name', 'approver_user', 'approver_group', 'order']
+        fields = ['name', 'approver_user', 'approver_group']
+        widgets = {
+            'name': forms.TextInput(attrs={'class': 'form-control'}),
+            'approver_user': forms.Select(attrs={'class': 'form-control'}),
+            'approver_group': forms.Select(attrs={'class': 'form-control'}),
+        }
 
     def clean(self):
         cleaned_data = super().clean()
         approver_user = cleaned_data.get('approver_user')
         approver_group = cleaned_data.get('approver_group')
-        if approver_user and approver_group:
-            raise forms.ValidationError("请只选择一个审批人或一个审批组，不能同时选择。")
+
         if not approver_user and not approver_group:
-            raise forms.ValidationError("请至少选择一个审批人或一个审批组。")
+            raise forms.ValidationError("必须选择至少一个审批人或审批组。")
+
         return cleaned_data

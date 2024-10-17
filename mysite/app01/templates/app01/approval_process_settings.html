@@ -1,47 +1,204 @@
 {% extends 'base.html' %}
+{% load static %}
+
+{% block title %}审批流程设置{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.css">
+<style>
+    .container {
+        max-width: 800px;
+        margin: 0 auto;
+        padding: 20px;
+    }
+    h1, h2 {
+        color: #333;
+        margin-bottom: 20px;
+    }
+    .table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 30px;
+    }
+    .table th, .table td {
+        padding: 12px;
+        text-align: left;
+        border-bottom: 1px solid #ddd;
+    }
+    .table th {
+        background-color: #f8f9fa;
+        font-weight: bold;
+    }
+    .table tbody tr:hover {
+        background-color: #f5f5f5;
+    }
+    .step-order {
+        font-weight: bold;
+        color: #007bff;
+    }
+    .drag-handle {
+        cursor: move;
+        color: #6c757d;
+        margin-right: 10px;
+    }
+    .form-group {
+        margin-bottom: 15px;
+    }
+    .form-control {
+        width: 100%;
+        padding: 8px;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+    }
+    .btn-primary {
+        background-color: #007bff;
+        color: white;
+        padding: 10px 20px;
+        border: none;
+        border-radius: 4px;
+        cursor: pointer;
+    }
+    .btn-primary:hover {
+        background-color: #0056b3;
+    }
+    .no-steps {
+        color: #6c757d;
+        font-style: italic;
+    }
+    .action-buttons {
+        white-space: nowrap;
+    }
+    .btn-sm {
+        padding: 0.25rem 0.5rem;
+        font-size: 0.875rem;
+        line-height: 1.5;
+        border-radius: 0.2rem;
+    }
+    .btn-warning {
+        color: #212529;
+        background-color: #ffc107;
+        border-color: #ffc107;
+    }
+    .btn-danger {
+        color: #fff;
+        background-color: #dc3545;
+        border-color: #dc3545;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
-<h1>审批流程设置</h1>
+<div class="container">
+    <h1>审批流程设置</h1>
+    
+    <h2>当前审批步骤</h2>
+    {% if steps %}
+        <table class="table" id="approval-steps">
+            <thead>
+                <tr>
+                    <th>顺序</th>
+                    <th>名称</th>
+                    <th>审批人</th>
+                    <th>审批组</th>
+                    <th>操作</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for step in steps %}
+                <tr data-step-id="{{ step.id }}">
+                    <td>
+                        <span class="drag-handle">&#9776;</span>
+                        <span class="step-order">{{ step.order }}</span>
+                    </td>
+                    <td>{{ step.name }}</td>
+                    <td>{{ step.approver_user.username|default:"未指定" }}</td>
+                    <td>{{ step.approver_group.name|default:"未指定" }}</td>
+                    <td class="action-buttons">
+                        <a href="{% url 'edit_approval_step' step.id %}" class="btn btn-warning btn-sm">编辑</a>
+                        <button class="btn btn-danger btn-sm delete-step" data-step-id="{{ step.id }}">删除</button>
+                    </td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    {% else %}
+        <p class="no-steps">暂无审批步骤</p>
+    {% endif %}
 
-<h2>当前审批步骤</h2>
-<table>
-    <thead>
-        <tr>
-            <th>步骤名称</th>
-            <th>审批人/组</th>
-            <th>顺序</th>
-            <th>操作</th>
-        </tr>
-    </thead>
-    <tbody>
-        {% for step in approval_steps %}
-        <tr>
-            <td>{{ step.name }}</td>
-            <td>
-                {% if step.approver_user %}
-                    {{ step.approver_user.username }} (用户)
-                {% elif step.approver_group %}
-                    {{ step.approver_group.name }} (组)
-                {% endif %}
-            </td>
-            <td>{{ step.order }}</td>
-            <td>
-                <a href="{% url 'edit_approval_step' step.id %}">编辑</a> |
-                <a href="{% url 'delete_approval_step' step.id %}">删除</a>
-            </td>
-        </tr>
-        {% empty %}
-        <tr>
-            <td colspan="4">暂无审批步骤</td>
-        </tr>
-        {% endfor %}
-    </tbody>
-</table>
+    <h2>添加新审批步骤</h2>
+    <form method="post">
+        {% csrf_token %}
+        {{ form.as_p }}
+        <button type="submit" class="btn btn-primary">添加步骤</button>
+    </form>
+</div>
+{% endblock %}
 
-<h2>添加新审批步骤</h2>
-<form method="post">
-    {% csrf_token %}
-    {{ form.as_p }}
-    <button type="submit">添加步骤</button>
-</form>
+{% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+<script>
+$(document).ready(function() {
+    $("#approval-steps tbody").sortable({
+        update: function(event, ui) {
+            var stepIds = [];
+            $("#approval-steps tbody tr").each(function() {
+                stepIds.push($(this).data('step-id'));
+            });
+            
+            $.ajax({
+                url: '{% url "update_step_order" %}',
+                method: 'POST',
+                data: {
+                    'step_ids[]': stepIds,
+                    'csrfmiddlewaretoken': '{{ csrf_token }}'
+                },
+                success: function(response) {
+                    if (response.status === 'success') {
+                        // 更新显示的顺序
+                        $("#approval-steps tbody tr").each(function(index) {
+                            $(this).find('.step-order').text(index + 1);
+                        });
+                    }
+                }
+            });
+        }
+    });
+
+    // 删除步骤
+    $('.delete-step').click(function() {
+        var stepId = $(this).data('step-id');
+        var row = $(this).closest('tr');
+        if (confirm('确定要删除这个审批步骤吗？')) {
+            $.ajax({
+                url: '/app01/delete-approval-step/' + stepId + '/',  // 直接构造 URL
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': '{{ csrf_token }}'
+                },
+                success: function(response) {
+                    if (response.status === 'success') {
+                        row.remove();
+                        updateStepOrders();
+                        alert('审批步骤已成功删除。');
+                    } else {
+                        alert('删除失败: ' + (response.message || '未知错误'));
+                    }
+                },
+                error: function(xhr, status, error) {
+                    console.error('删除请求失败:', status, error);
+                    console.error('响应文本:', xhr.responseText);
+                    alert('删除失败，请查看控制台以获取更多信息。');
+                }
+            });
+        }
+    });
+
+    function updateStepOrders() {
+        $('#approval-steps tbody tr').each(function(index) {
+            $(this).find('.step-order').text(index + 1);
+        });
+    }
+});
+</script>
 {% endblock %}

@@ -35,9 +35,9 @@ INSTALLED_APPS = [
     'django.contrib.auth',
     'django.contrib.contenttypes',
     'django.contrib.sessions',
-    'django.contrib.messages',  # 确保这里只出现一次
+    'django.contrib.messages',
     'django.contrib.staticfiles',
-    'app01.apps.App01Config',
+    'app01',
     # ... 你其他应用 ...
 ]
 
@@ -187,3 +187,7 @@ LOGGING = {
         },
     },
 }
+
+# 在文件的其他地方添加这一行
+SITE_URL = 'http://127.0.0.1:8000/'  # 开发环境
+# SITE_URL = 'https://yourdomain.com/'  # 生产环境

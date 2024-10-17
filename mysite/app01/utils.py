@@ -77,3 +77,17 @@ def send_final_result_email(request, supply_request):
         logger.info(f"Final result email sent for supply request {supply_request.id}")
     except Exception as e:
         logger.error(f"Failed to send final result email for supply request {supply_request.id}: {str(e)}")
+
+def get_next_approver(supply_request):
+    # 获取当前审批步骤
+    current_step = supply_request.current_approval_step()
+    if current_step:
+        # 获取下一个审批步骤
+        next_step = ApprovalStep.objects.filter(order__gt=current_step.order).first()
+        if next_step:
+            if next_step.approver_user:
+                return next_step.approver_user
+            elif next_step.approver_group:
+                # 如果是组，可能需要选择组中的一个成员
+                return next_step.approver_group.user_set.first()
+    return None

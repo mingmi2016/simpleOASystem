@@ -43,8 +43,10 @@ class LeaveRequest(models.Model):
 
 class ApprovalStep(models.Model):
     name = models.CharField(max_length=100)
-    approver_user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
-    approver_group = models.ForeignKey(Group, on_delete=models.CASCADE, null=True, blank=True)
+    # approver_user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
+    # approver_group = models.ForeignKey(Group, on_delete=models.CASCADE, null=True, blank=True)
+    approver_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='approval_steps')
+    approver_group = models.ForeignKey(Group, on_delete=models.SET_NULL, null=True, related_name='approval_steps')
     order = models.PositiveIntegerField(unique=True)
 
     def __str__(self):
@@ -53,16 +55,16 @@ class ApprovalStep(models.Model):
 
     class Meta:
         ordering = ['order']
-
     def get_next_step(self):
         return ApprovalStep.objects.filter(order__gt=self.order).order_by('order').first()
 
     def get_approvers(self):
+        approvers = set()
         if self.approver_user:
-            return [self.approver_user]
-        elif self.approver_group:
-            return self.approver_group.user_set.all()
-        return []
+            approvers.add(self.approver_user)
+        if self.approver_group:
+            approvers.update(self.approver_group.user_set.all())
+        return list(approvers)
 
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
@@ -157,7 +159,10 @@ class SupplyRequest(models.Model):
         return f"Supply Request {self.id}"
 
     def get_current_approval(self):
-        return self.approvals.filter(step=self.current_step).first()
+        pending_approval = self.approvals.filter(status='pending').order_by('step__order').first()
+        if pending_approval:
+            return pending_approval
+        return self.approvals.filter(status='approved').order_by('-step__order').first()
 
     def can_be_deleted(self):
         return self.status in ['pending', 'rejected'] and not self.approvals.filter(is_approved=True).exists()
@@ -289,6 +294,23 @@ class RequestApproval(models.Model):
 
 
 
+
+
+
+
+
+
+@receiver(post_save, sender=SupplyRequest)
+def supply_request_post_save(sender, instance, created, **kwargs):
+    if created:
+        # 确保这里没有重复调用发送邮件的函数
+        pass
+
+@receiver(post_save, sender=RequestApproval)
+def request_approval_post_save(sender, instance, created, **kwargs):
+    if created:
+        # 确保这里没有重复调用发送邮件的函数
+        pass
 
 
 
