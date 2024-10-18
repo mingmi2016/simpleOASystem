@@ -19,29 +19,13 @@ from email.header import Header
 
 logger = logging.getLogger(__name__)
 
-class LeaveRequest(models.Model):
-    LEAVE_TYPES = (
-        ('AL', '年假'),
-        ('SL', '病假'),
-        ('PL', '事假'),
-        ('OL', '其他'),
-    )
-    STATUS_CHOICES = (
-        ('pending', '待审批'),
-        ('approved', '已批准'),
-        ('rejected', '已拒绝'),
-    )
-    employee = models.ForeignKey(User, on_delete=models.CASCADE)
-    leave_type = models.CharField(max_length=2, choices=LEAVE_TYPES, default='OL')  # 添加默认值
-    start_date = models.DateField()
-    end_date = models.DateField()
-    reason = models.TextField()
-    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='pending')
-
-    def __str__(self):
-        return f"{self.employee}'s {self.get_leave_type_display()} from {self.start_date} to {self.end_date}"
 
 class ApprovalStep(models.Model):
+    """
+    审批步骤模型
+    
+    用于记录每个审批步骤的详细信息，包括审批人、审批顺序等。
+    """
     name = models.CharField(max_length=100)
     # approver_user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     # approver_group = models.ForeignKey(Group, on_delete=models.CASCADE, null=True, blank=True)
@@ -212,6 +196,7 @@ class RequestApproval(models.Model):
         ('rejected', '已拒绝'),
     )
 
+
     supply_request = models.ForeignKey(SupplyRequest, on_delete=models.CASCADE, related_name='approvals')
     approver = models.ForeignKey(User, on_delete=models.CASCADE)
     step = models.ForeignKey(ApprovalStep, on_delete=models.CASCADE)
@@ -290,14 +275,6 @@ class RequestApproval(models.Model):
 
     def get_reject_url(self, request):
         return request.build_absolute_uri(reverse('reject_request', args=[self.approval_token]))
-
-
-
-
-
-
-
-
 
 
 @receiver(post_save, sender=SupplyRequest)

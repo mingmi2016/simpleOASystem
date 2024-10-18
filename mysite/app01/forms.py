@@ -1,26 +1,8 @@
 from django import forms
 from django.forms import inlineformset_factory
-from .models import LeaveRequest, SupplyRequest, RequestApproval, OfficeSupply, ApprovalStep, OfficeSupplyItem, OfficeSupplyOption
+from .models import SupplyRequest, RequestApproval, OfficeSupply, ApprovalStep, OfficeSupplyItem, OfficeSupplyOption
 
-class LeaveRequestForm(forms.ModelForm):
-    class Meta:
-        model = LeaveRequest
-        fields = ['leave_type', 'start_date', 'end_date', 'reason']
-        widgets = {
-            'start_date': forms.DateInput(attrs={'type': 'date'}),
-            'end_date': forms.DateInput(attrs={'type': 'date'}),
-        }
 
-    def clean(self):
-        cleaned_data = super().clean()
-        start_date = cleaned_data.get('start_date')
-        end_date = cleaned_data.get('end_date')
-
-        if start_date and end_date:
-            if start_date > end_date:
-                raise forms.ValidationError("结束日期必须晚于开始日期。")
-
-        return cleaned_data
 
 class SupplyRequestForm(forms.ModelForm):
     class Meta:

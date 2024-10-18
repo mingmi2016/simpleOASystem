@@ -4,7 +4,7 @@ from django.contrib import admin
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.contrib.auth.models import User
-from .models import Profile, Department, LeaveRequest, ApprovalStep, OfficeSupply, SupplyRequest, RequestApproval, OfficeSupplyItem, OfficeSupplyOption
+from .models import Profile, Department, ApprovalStep, OfficeSupply, SupplyRequest, RequestApproval, OfficeSupplyItem, OfficeSupplyOption
 
 class ProfileInline(admin.StackedInline):
     model = Profile
@@ -18,7 +18,6 @@ class UserAdmin(BaseUserAdmin):
 admin.site.unregister(User)
 admin.site.register(User, UserAdmin)
 admin.site.register(Department)
-admin.site.register(LeaveRequest)
 admin.site.register(ApprovalStep)
 admin.site.register(OfficeSupply)
 admin.site.register(SupplyRequest)
