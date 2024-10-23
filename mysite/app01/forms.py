@@ -1,62 +1,69 @@
 from django import forms
-from django.forms import inlineformset_factory
-from .models import SupplyRequest, RequestApproval, OfficeSupply, ApprovalStep, OfficeSupplyItem, OfficeSupplyOption
+from django.forms import formset_factory
+from .models import SupplyRequest, RequestApproval, OfficeSupply, ApprovalStep, SupplyRequestItem
+from django.contrib.auth.models import User
 
 
 
 class SupplyRequestForm(forms.ModelForm):
     class Meta:
         model = SupplyRequest
-        fields = ['reason']
+        fields = ['purpose']
 
-class OfficeSupplyItemForm(forms.ModelForm):
-    supply_option = forms.ModelChoiceField(
-        queryset=OfficeSupplyOption.objects.all(),
-        empty_label="请选择办公用品",
-        widget=forms.Select(attrs={'class': 'form-control'})
-    )
+class SupplyRequestItemForm(forms.Form):
+    office_supply = forms.ModelChoiceField(queryset=OfficeSupply.objects.all(), label='办公用品')
+    quantity = forms.IntegerField(min_value=1, label='数量')
 
-    class Meta:
-        model = OfficeSupplyItem
-        fields = ['supply_option', 'quantity']
-        widgets = {
-            'supply_option': forms.Select(attrs={'class': 'form-control'}),
-            'quantity': forms.NumberInput(attrs={'class': 'form-control'}),
-        }
-
-OfficeSupplyItemFormSet = inlineformset_factory(
-    SupplyRequest,  # 父模型
-    OfficeSupplyItem,  # 子模型
-    form=OfficeSupplyItemForm,
-    extra=1,
-    can_delete=True
-)
+SupplyRequestItemFormSet = formset_factory(SupplyRequestItemForm, extra=1, can_delete=True)
 
 class RequestApprovalForm(forms.ModelForm):
     class Meta:
         model = RequestApproval
-        fields = ['is_approved', 'comment']
-        widgets = {
-            'is_approved': forms.RadioSelect(choices=((True, '批准'), (False, '拒绝'))),
-            'comment': forms.Textarea(attrs={'rows': 4}),
-        }
+        fields = ['status', 'comment']
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['status'].label = "审批状态"
+        self.fields['comment'].label = "审批意见"
 
 class ApprovalStepForm(forms.ModelForm):
+    approvers = forms.ModelMultipleChoiceField(
+        queryset=User.objects.all(),
+        widget=forms.CheckboxSelectMultiple,
+        required=False
+    )
+
     class Meta:
         model = ApprovalStep
-        fields = ['name', 'approver_user', 'approver_group']
+        fields = ['process_name', 'step_number', 'approvers', 'is_countersign']
         widgets = {
-            'name': forms.TextInput(attrs={'class': 'form-control'}),
-            'approver_user': forms.Select(attrs={'class': 'form-control'}),
-            'approver_group': forms.Select(attrs={'class': 'form-control'}),
+            'process_name': forms.TextInput(attrs={'class': 'form-control'}),
+            'step_number': forms.NumberInput(attrs={'class': 'form-control'}),
+            'approvers': forms.SelectMultiple(attrs={'class': 'form-control'}),
+            'is_countersign': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
         }
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields['process_name'].label = "流程名称"
+        self.fields['step_number'].label = "步骤序号"
+        self.fields['approvers'].label = "审批人"
+        self.fields['is_countersign'].label = "是否为会签步骤"
 
     def clean(self):
         cleaned_data = super().clean()
-        approver_user = cleaned_data.get('approver_user')
-        approver_group = cleaned_data.get('approver_group')
+        approvers = cleaned_data.get('approvers')
 
-        if not approver_user and not approver_group:
-            raise forms.ValidationError("必须选择至少一个审批人或审批组。")
+        if not approvers:
+            raise forms.ValidationError("必须选择至少一个审批人。")
 
         return cleaned_data
+
+
+
+STATUS_CHOICES = [
+    ('pending', '待审批'),
+    ('approved', '已批准'),
+    ('rejected', '已拒绝'),
+]
+

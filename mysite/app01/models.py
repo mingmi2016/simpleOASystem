@@ -26,29 +26,26 @@ class ApprovalStep(models.Model):
     
     用于记录每个审批步骤的详细信息，包括审批人、审批顺序等。
     """
-    name = models.CharField(max_length=100)
-    # approver_user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
-    # approver_group = models.ForeignKey(Group, on_delete=models.CASCADE, null=True, blank=True)
-    approver_user = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='approval_steps')
-    approver_group = models.ForeignKey(Group, on_delete=models.SET_NULL, null=True, related_name='approval_steps')
-    order = models.PositiveIntegerField(unique=True)
-
-    def __str__(self):
-        approver = self.approver_user.username if self.approver_user else self.approver_group.name
-        return f"{self.name} - Step {self.order} ({approver})"
+    process_name = models.CharField(max_length=100)
+    step_number = models.PositiveIntegerField(default=1)
+    approvers = models.ManyToManyField(User, related_name='approval_steps')
+    is_countersign = models.BooleanField(default=False, help_text="是否为会签步骤")
+    created_at = models.DateTimeField(default=timezone.now, editable=False)
+    updated_at = models.DateTimeField(auto_now=True)
+    order = models.IntegerField(default=0)
 
     class Meta:
-        ordering = ['order']
+        unique_together = ['process_name', 'step_number']
+        ordering = ['process_name', 'step_number']
+
+    def __str__(self):
+        return f"{self.process_name} - 步骤 {self.step_number}"
+
     def get_next_step(self):
-        return ApprovalStep.objects.filter(order__gt=self.order).order_by('order').first()
+        return ApprovalStep.objects.filter(process_name=self.process_name, step_number__gt=self.step_number).order_by('step_number').first()
 
     def get_approvers(self):
-        approvers = set()
-        if self.approver_user:
-            approvers.add(self.approver_user)
-        if self.approver_group:
-            approvers.update(self.approver_group.user_set.all())
-        return list(approvers)
+        return list(self.approvers.all())
 
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)
@@ -82,71 +79,48 @@ def save_user_profile(sender, instance, **kwargs):
     instance.profile.save()
 
 class OfficeSupply(models.Model):
-    """
-    办公用品模型
-    
-    用于记录可申请的办公用品信息。
-    """
-    name = models.CharField(max_length=100, verbose_name="物品名称")
-    description = models.TextField(blank=True, verbose_name="物品描述")
-    unit = models.CharField(max_length=20, default='个', verbose_name="单位")
-
-    class Meta:
-        verbose_name = "办公用品"
-        verbose_name_plural = "办公用品"
-
-    def __str__(self):
-        return self.name
-
-class OfficeSupplyOption(models.Model):
     name = models.CharField(max_length=100)
+    # 其他字段...
 
     def __str__(self):
         return self.name
 
-def get_default_supply_option():
-    return OfficeSupplyOption.objects.first().id
+# class OfficeSupplyOption(models.Model):
+#     name = models.CharField(max_length=100)
+
+#     def __str__(self):
+#         return self.name
+
+# def get_default_supply_option():
+#     return OfficeSupplyOption.objects.first().id
+
+def get_default_user():
+    return User.objects.get_or_create(username='default_user')[0].id
 
 class SupplyRequest(models.Model):
     """
     办公用品申请模型
     
-    用于记录员工的办公用品申请，包括申请人、申请原因、当前状态等信息。
+    用于记录员工的办公用品申请，包括申请人、申请因、当前状态等信息。
     """
-    STATUS_CHOICES = (
-        ('pending', '待审批'),
-        ('approved', '已批准'),
-        ('rejected', '已拒绝'),
-    )
-    employee = models.ForeignKey(User, on_delete=models.CASCADE, related_name='supply_requests')
-    reason = models.TextField()
-    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
+    requester = models.ForeignKey(User, on_delete=models.CASCADE)
+    purpose = models.TextField()
+    status = models.CharField(max_length=20, default='pending')
     created_at = models.DateTimeField(auto_now_add=True)
-    current_step = models.ForeignKey(
-        ApprovalStep, 
-        on_delete=models.SET_NULL, 
-        null=True, 
-        blank=True, 
-        related_name='current_requests', 
-        verbose_name="当前审批步骤"
-    )
-    updated_at = models.DateTimeField(auto_now=True, verbose_name="更新时间")
-    current_approver = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='current_approvals')
-    next_approver = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, related_name='next_approvals')
-    current_approval_step = models.IntegerField(default=1)
+    updated_at = models.DateTimeField(auto_now=True)
+    current_step = models.ForeignKey('ApprovalStep', on_delete=models.SET_NULL, null=True, blank=True)
+    
+    # 其他字段...
 
     class Meta:
         verbose_name = "办公用品申请"
         verbose_name_plural = "办公用品申请"
 
     def __str__(self):
-        return f"Supply Request {self.id}"
+        return f"申请 #{self.id} - {self.requester.username} - {self.get_status_display()}"
 
     def get_current_approval(self):
-        pending_approval = self.approvals.filter(status='pending').order_by('step__order').first()
-        if pending_approval:
-            return pending_approval
-        return self.approvals.filter(status='approved').order_by('-step__order').first()
+        return self.requestapproval_set.order_by('-created_at').first()
 
     def can_be_deleted(self):
         return self.status in ['pending', 'rejected'] and not self.approvals.filter(is_approved=True).exists()
@@ -174,13 +148,13 @@ class SupplyRequest(models.Model):
     def is_approved(self):
         return all(approval.status == 'approved' for approval in self.requestapproval_set.all())
 
-class OfficeSupplyItem(models.Model):
+class SupplyRequestItem(models.Model):
     supply_request = models.ForeignKey(SupplyRequest, on_delete=models.CASCADE, related_name='items')
-    supply_option = models.ForeignKey(OfficeSupplyOption, on_delete=models.CASCADE)
+    office_supply = models.ForeignKey(OfficeSupply, on_delete=models.CASCADE)
     quantity = models.PositiveIntegerField()
 
     def __str__(self):
-        return f"{self.supply_option.name} ({self.quantity})"
+        return f"{self.office_supply.name} - {self.quantity}"
 
 
 
@@ -197,19 +171,16 @@ class RequestApproval(models.Model):
     )
 
 
-    supply_request = models.ForeignKey(SupplyRequest, on_delete=models.CASCADE, related_name='approvals')
+    supply_request = models.ForeignKey(SupplyRequest, on_delete=models.CASCADE)
     approver = models.ForeignKey(User, on_delete=models.CASCADE)
-    step = models.ForeignKey(ApprovalStep, on_delete=models.CASCADE)
-    status = models.CharField(max_length=20, choices=[('pending', 'Pending'), ('approved', 'Approved'), ('rejected', 'Rejected')])
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default='pending')
     comment = models.TextField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    is_approved = models.BooleanField(default=False)
-    approval_token = models.UUIDField(default=uuid.uuid4, editable=False, unique=True)
-    email_sent_at = models.DateTimeField(null=True, blank=True)
+    step = models.ForeignKey(ApprovalStep, on_delete=models.CASCADE)
 
     def __str__(self):
-        return f"Approval for {self.supply_request} by {self.approver}"
+        return f"审批 {self.id} - {self.approver.username} - {self.get_status_display()}"
 
     @staticmethod
     def generate_token():
@@ -223,7 +194,7 @@ class RequestApproval(models.Model):
 
             if self.approver.email.endswith('@163.com') or self.approver.email.endswith('njau.edu.cn'): # 163邮箱
                 message = f"""
-                申请人: {self.supply_request.employee.username} <br />
+                申请人: {self.supply_request.requester.username} <br />
                 申请原因: {self.supply_request.reason} <br />
 
                 点击以下链进行审批: <br />
@@ -234,7 +205,7 @@ class RequestApproval(models.Model):
                 send_mail(subject,"", from_email, recipient_list, html_message=message) 
             elif self.approver.email.endswith('@qq.com'): # qq邮箱
                 message = f"""
-                申请人: {self.supply_request.employee.username}
+                申请人: {self.supply_request.requester.username}
                 申请原因: {self.supply_request.reason}
 
                 点击以下接进行审批:
@@ -288,6 +259,8 @@ def request_approval_post_save(sender, instance, created, **kwargs):
     if created:
         # 确保这里没有重复调用发送邮件的函数
         pass
+
+
 
 
 

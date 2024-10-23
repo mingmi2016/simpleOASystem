@@ -2,62 +2,152 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<h1>审批历史</h1>
+<div class="container">
+    <h2>审批历史</h2>
+    {% for data in requests_data %}
+        <div class="request-card">
+            <div class="request-info">
+                <h3>申请编号: {{ data.request.id }}</h3>
+                <p><strong>申请人:</strong> {{ data.request.requester.username }}</p>
+                <p><strong>申请时间:</strong> {{ data.request.created_at|date:"Y-m-d H:i" }}</p>
+                <p><strong>申请状态:</strong> <span class="status {{ data.request.status }}">{{ data.request.status }}</span></p>
+                <p><strong>申请目的:</strong> {{ data.request.purpose }}</p>
+            </div>
+            
+            <div class="request-details">
+                <div class="request-items">
+                    <h4>申请物品:</h4>
+                    <ul>
+                        {% for item in data.items %}
+                            <li>{{ item.office_supply.name }} - 数量: {{ item.quantity }}</li>
+                        {% endfor %}
+                    </ul>
+                </div>
+                
+                <div class="approval-history">
+                    <h4>审批历史:</h4>
+                    <ul>
+                        {% for approval in data.approvals %}
+                            <li class="approval-item">
+                                <div class="approval-info">
+                                    <span class="approver">{{ approval.approver.username }}</span>
+                                    <span class="approval-status {{ approval.status }}">{{ approval.status }}</span>
+                                    <span class="approval-time">{{ approval.created_at|date:"Y-m-d H:i" }}</span>
+                                </div>
+                                {% if approval.comment %}
+                                    <p class="approval-comment">{{ approval.comment }}</p>
+                                {% endif %}
+                            </li>
+                        {% endfor %}
+                    </ul>
+                </div>
+            </div>
+        </div>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block extra_css %}
 <style>
-    table {
-        width: 100%;
-        border-collapse: collapse;
+    .container {
+        max-width: 1200px;
+        margin: 0 auto;
+        padding: 20px;
+        font-family: Arial, sans-serif;
     }
-    th, td {
-        padding: 8px;
-        border: 1px solid #ddd;
-        max-width: 200px;
-        overflow: hidden;
-        text-overflow: ellipsis;
-        white-space: nowrap;
+    h2 {
+        text-align: center;
+        color: #333;
+        margin-bottom: 30px;
     }
-    td.expandable:hover {
-        white-space: normal;
-        word-wrap: break-word;
+    .request-card {
+        display: flex;
+        background-color: #fff;
+        border: 1px solid #e0e0e0;
+        border-radius: 8px;
+        padding: 20px;
+        margin-bottom: 30px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+    .request-info {
+        flex: 0 0 30%;
+        padding-right: 20px;
+        border-right: 1px solid #e0e0e0;
+    }
+    .request-details {
+        flex: 1;
+        display: flex;
+        padding-left: 20px;
+    }
+    .request-items, .approval-history {
+        flex: 1;
+    }
+    .request-info h3 {
+        margin-top: 0;
+        color: #333;
+    }
+    .status {
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 0.9em;
+        font-weight: bold;
+    }
+    .status.pending { background-color: #ffd700; color: #000; }
+    .status.approved { background-color: #4caf50; color: #fff; }
+    .status.rejected { background-color: #f44336; color: #fff; }
+    h4 {
+        color: #555;
+        border-bottom: 1px solid #e0e0e0;
+        padding-bottom: 5px;
+    }
+    ul {
+        list-style-type: none;
+        padding-left: 0;
+    }
+    .approval-item {
+        background-color: #f9f9f9;
+        border: 1px solid #e0e0e0;
+        border-radius: 5px;
+        padding: 10px;
+        margin-bottom: 10px;
+    }
+    .approval-info {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 5px;
+    }
+    .approver {
+        font-weight: bold;
+    }
+    .approval-status {
+        padding: 3px 8px;
+        border-radius: 12px;
+        font-size: 0.8em;
+    }
+    .approval-time {
+        color: #777;
+        font-size: 0.9em;
+    }
+    .approval-comment {
+        margin-top: 5px;
+        font-style: italic;
+        color: #555;
+    }
+    @media (max-width: 768px) {
+        .request-card, .request-details {
+            flex-direction: column;
+        }
+        .request-info {
+            border-right: none;
+            border-bottom: 1px solid #e0e0e0;
+            padding-right: 0;
+            padding-bottom: 20px;
+            margin-bottom: 20px;
+        }
+        .request-details {
+            padding-left: 0;
+        }
     }
 </style>
-<table>
-    <thead>
-        <tr>
-            <th>申请编号</th>
-            <th>申请人</th>
-            <th>申请物品</th>
-            <th>申请原因</th>
-            <th>创建时间</th>
-            <th>审批历史</th>
-        </tr>
-    </thead>
-    <tbody>
-    {% for item in approval_history %}
-        <tr>
-            <td>{{ item.supply_request.id }}</td>
-            <td>{{ item.supply_request.employee }}</td>
-            <td class="expandable">
-                {% for supply_item in item.items %}
-                    {{ supply_item.supply_option.name }} ({{ supply_item.quantity }}){% if not forloop.last %}, {% endif %}
-                {% endfor %}
-            </td>
-            <td class="expandable">{{ item.supply_request.reason }}</td>
-            <td>{{ item.supply_request.created_at|date:"Y-m-d H:i" }}</td>
-            <td class="expandable">
-                {% for approval in item.approvals %}
-                    {{ approval.approver }} ({{ approval.get_status_display }}){% if approval.comment %}: {{ approval.comment }}{% endif %}
-                    {% if not forloop.last %}<br>{% endif %}
-                {% empty %}
-                    暂无审批记录
-                {% endfor %}
-            </td>
-        </tr>
-    {% empty %}
-        <tr>
-            <td colspan="6">目前没有任何审批历史记录</td>
-        </tr>
-    {% endfor %}
-    </tbody>
-</table>
 {% endblock %}
