@@ -68,23 +68,24 @@
 {% endblock %}
 
 {% block content %}
-<div class="container">
-    <h1>编辑审批步骤</h1>
+<div class="container mt-4">
+    <h2>编辑审批步骤</h2>
     <form method="post">
         {% csrf_token %}
         {% for field in form %}
             <div class="form-group">
                 {{ field.label_tag }}
                 {{ field }}
-                {% if field.errors %}
-                    <div class="error">{{ field.errors }}</div>
+                {% if field.help_text %}
+                    <small class="form-text text-muted">{{ field.help_text }}</small>
                 {% endif %}
+                {% for error in field.errors %}
+                    <div class="invalid-feedback d-block">{{ error }}</div>
+                {% endfor %}
             </div>
         {% endfor %}
-        <div class="button-group">
-            <a href="{% url 'approval_process_settings' %}" class="btn btn-secondary">取消</a>
-            <button type="submit" class="btn btn-primary">保存更改</button>
-        </div>
+        <button type="submit" class="btn btn-primary">保存更改</button>
+        <a href="{% url 'approval_process_settings' %}" class="btn btn-secondary">取消</a>
     </form>
 </div>
 {% endblock %}

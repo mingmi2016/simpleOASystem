@@ -5,32 +5,42 @@
 {% block content %}
 <div class="container">
     <h1 class="page-title">待审批请求</h1>
-    {% if approvals %}
+    {% if pending_approvals %}
         <table class="approval-table">
             <thead>
                 <tr>
                     <th>申请人</th>
-                    <th>申请原因</th>
+                    <th>申请日期</th>
                     <th>申请物品</th>
+                    <th>申请目的</th>
+                    <th>当前步骤</th>
                     <th>操作</th>
                 </tr>
             </thead>
             <tbody>
-                {% for approval in approvals %}
+                {% for approval in pending_approvals %}
                     <tr>
-                        <td>{{ approval.supply_request.employee }}</td>
-                        <td>{{ approval.supply_request.reason }}</td>
+                        <td>{{ approval.supply_request.requester.username }}</td>
+                        <td>{{ approval.supply_request.created_at|date:"Y-m-d H:i" }}</td>
                         <td>
-                            <ul class="item-list">
-                            {% for item in approval.supply_request.items.all %}
-                                <li>{{ item.supply_option.name }} ({{ item.quantity }})</li>
-                            {% endfor %}
+                            <ul>
+                                {% for item in approval.supply_request.items.all %}
+                                <li>{{ item.office_supply.name }} (数量: {{ item.quantity }})</li>
+                                {% endfor %}
                             </ul>
                         </td>
+                        <td>{{ approval.supply_request.purpose }}</td>
+                        <td>步骤 {{ approval.step.step_number }}{% if approval.step.is_countersign %} (会签){% endif %}</td>
                         <td>
-                            <a href="{% url 'approve_request' approval.id %}" class="btn btn-primary">审批</a>
+                            {% comment %} <a href="{% url 'approve_request' approval.id %}" class="btn btn-success">批准</a>
+                            <a href="{% url 'reject_request' approval.id %}" class="btn btn-danger">拒绝</a> {% endcomment %}
+                            <a href="{% url 'approval_detail' approval.id %}" class="btn btn-primary">审批</a>
                         </td>
                     </tr>
+                {% empty %}
+                <tr>
+                    <td colspan="6">暂无待审批请求</td>
+                </tr>
                 {% endfor %}
             </tbody>
         </table>

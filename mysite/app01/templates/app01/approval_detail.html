@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+
+{% block content %}
+<h1>审批详情</h1>
+<div class="card">
+    <div class="card-body">
+        <h5 class="card-title">申请信息</h5>
+        <p><strong>申请人：</strong> {{ approval.supply_request.requester.username }}</p>
+        <p><strong>申请日期：</strong> {{ approval.supply_request.created_at|date:"Y-m-d H:i" }}</p>
+        <p><strong>申请目的：</strong> {{ approval.supply_request.purpose }}</p>
+        <p><strong>当前步骤：</strong> 步骤 {{ approval.step.step_number }}{% if approval.step.is_countersign %} (会签){% endif %}</p>
+        
+        <h6>申请物品：</h6>
+        <ul>
+            {% for item in approval.supply_request.items.all %}
+            <li>{{ item.item.name }} (数量: {{ item.quantity }})</li>
+            {% endfor %}
+        </ul>
+        
+        <form method="post">
+            {% csrf_token %}
+            <div class="form-group">
+                <label for="comment">审批意见：</label>
+                <textarea class="form-control" id="comment" name="comment" rows="3"></textarea>
+            </div>
+            <button type="submit" name="action" value="approve" class="btn btn-success">批准</button>
+            <button type="submit" name="action" value="reject" class="btn btn-danger">拒绝</button>
+        </form>
+    </div>
+</div>
+{% endblock %}
+

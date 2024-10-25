@@ -1,0 +1,9 @@
+{% for request in supply_requests %}
+    <!-- 如果之前是这样的： -->
+    <!-- <p>Employee: {{ request.employee }}</p> -->
+    
+    <!-- 修改为： -->
+    <p>Requester: {{ request.requester }}</p>
+    
+    <!-- 其他字段 -->
+{% endfor %}

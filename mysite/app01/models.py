@@ -27,25 +27,28 @@ class ApprovalStep(models.Model):
     用于记录每个审批步骤的详细信息，包括审批人、审批顺序等。
     """
     process_name = models.CharField(max_length=100)
-    step_number = models.PositiveIntegerField(default=1)
+    step_number = models.IntegerField(unique=True, verbose_name="步骤编号")
     approvers = models.ManyToManyField(User, related_name='approval_steps')
     is_countersign = models.BooleanField(default=False, help_text="是否为会签步骤")
     created_at = models.DateTimeField(default=timezone.now, editable=False)
     updated_at = models.DateTimeField(auto_now=True)
-    order = models.IntegerField(default=0)
+    order = models.IntegerField(unique=True, verbose_name="排序")
 
     class Meta:
         unique_together = ['process_name', 'step_number']
-        ordering = ['process_name', 'step_number']
+        ordering = ['order']
 
     def __str__(self):
-        return f"{self.process_name} - 步骤 {self.step_number}"
+        return f"步骤 {self.step_number}"
 
     def get_next_step(self):
         return ApprovalStep.objects.filter(process_name=self.process_name, step_number__gt=self.step_number).order_by('step_number').first()
 
     def get_approvers(self):
         return list(self.approvers.all())
+
+    def get_approver(self):
+        return self.approvers.all().first()
 
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE)

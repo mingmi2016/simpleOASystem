@@ -1,0 +1,8 @@
+{% extends "base.html" %}  <!-- 如果您使用基础模板 -->
+
+{% block content %}
+<h1>审批已处理</h1>
+<p>{{ message }}</p>
+<a href="{% url 'home' %}">返回首页</a>  <!-- 假设您有一个名为 'home' 的 URL -->
+{% endblock %}
+

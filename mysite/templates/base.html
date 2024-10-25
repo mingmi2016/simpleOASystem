@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}办公用品申请系统{% endblock %}</title>
+    <title>{% block title %}Default Title{% endblock title %}</title>
     <style>
         :root {
             --primary-color: #1e88e5;
@@ -95,7 +95,7 @@
             <ul>
                 {% if user.is_authenticated %}
                     <li><a href="{% url 'home' %}">首页</a></li>
-                    <li><a href="{% url 'create_supply_request' %}">申请办公用品</a></li>
+                    <li><a href="{% url 'create_supply_request' %}">申请种子</a></li>
                     <li><a href="{% url 'supply_request_list' %}">我的申请</a></li>
                     <li><a href="{% url 'pending_approvals' %}">待审批</a></li>
                     <li><a href="{% url 'approval_history' %}">审批历史</a></li>
@@ -121,10 +121,10 @@
         {% endif %}
 
         {% block content %}
-        {% endblock %}
+        {% endblock content %}
+
+        {% block extra_js %}
+        {% endblock extra_js %}
     </main>
-
-
-    {% block extra_js %}{% endblock %}
 </body>
 </html>

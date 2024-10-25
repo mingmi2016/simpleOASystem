@@ -7,6 +7,7 @@ urlpatterns = [
     path('supply-request/<int:pk>/', views.supply_request_detail, name='supply_request_detail'),
     path('approvals/', views.approval_list, name='approval_list'),
     path('approve/<int:approval_id>/', views.approve_request, name='approve_request'),
+    path('reject/<int:approval_id>/', views.reject_request, name='reject_request'),
     path('approval-steps/', views.approval_step_list, name='approval_step_list'),
     path('approval-steps/create/', views.approval_step_create, name='approval_step_create'),
     path('approval-steps/<int:pk>/edit/', views.approval_step_edit, name='approval_step_edit'),
@@ -27,4 +28,8 @@ urlpatterns = [
     path('reject-email/<int:approval_id>/<str:uidb64>/<str:token>/', views.reject_request_email, name='reject_request_email'),
     path('approval-success/', views.approval_success, name='approval_success'),
     path('approval-error/', views.approval_error, name='approval_error'),
+    path('add-approval-step/', views.add_approval_step, name='add_approval_step'),
+    path('approval-rejected/', views.approval_rejected, name='approval_rejected'),
+    path('approval-already-processed/', views.approval_already_processed, name='approval_already_processed'),
+    path('approval-detail/<int:approval_id>/', views.approval_detail, name='approval_detail'),
 ]

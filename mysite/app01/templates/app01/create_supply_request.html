@@ -1,50 +1,255 @@
 {% extends 'base.html' %}
+{% load static %}
 
-{% block title %}申请办公用品{% endblock %}
+{% block title %}申请种子{% endblock %}
+
+{% block extra_css %}
+<link rel="stylesheet" href="{% static 'css/select2.min.css' %}">
+<style>
+    body {
+        background-color: #f8f9fa;
+    }
+    .container {
+        background-color: #ffffff;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        padding: 30px;
+        margin-top: 50px;
+    }
+    h2 {
+        color: #333;
+        border-bottom: 2px solid #007bff;
+        padding-bottom: 10px;
+        margin-bottom: 30px;
+    }
+    .supply-item {
+        background-color: #f8f9fa;
+        border: 1px solid #dee2e6;
+        padding: 20px;
+        margin-bottom: 20px;
+        border-radius: 5px;
+        transition: all 0.3s ease;
+    }
+    .supply-item:hover {
+        box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+    }
+    .form-row {
+        display: flex;
+        flex-wrap: wrap;
+        margin-right: -10px;
+        margin-left: -10px;
+    }
+    .form-group {
+        flex: 1;
+        padding: 0 10px;
+        margin-bottom: 15px;
+    }
+    label {
+        font-weight: bold;
+        color: #495057;
+        margin-bottom: 5px;
+        display: block;
+    }
+    select, input[type="number"], textarea {
+        width: 100%;
+        padding: 8px 12px;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        transition: border-color 0.15s ease-in-out, box-shadow 0.15s ease-in-out;
+    }
+    select:focus, input[type="number"]:focus, textarea:focus {
+        border-color: #80bdff;
+        outline: 0;
+        box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
+    }
+    textarea#id_purpose {
+        min-height: 100px;
+    }
+    .delete-item {
+        background-color: #dc3545;
+        color: white;
+        border: none;
+        padding: 5px 10px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background-color 0.15s ease-in-out;
+    }
+    .delete-item:hover {
+        background-color: #c82333;
+    }
+    #add-item {
+        background-color: #28a745;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.15s ease-in-out;
+    }
+    #add-item:hover {
+        background-color: #218838;
+    }
+    button[type="submit"] {
+        background-color: #007bff;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.15s ease-in-out;
+    }
+    button[type="submit"]:hover {
+        background-color: #0056b3;
+    }
+    .form-actions {
+        margin-top: 20px;
+    }
+    .form-actions button {
+        margin-right: 10px;
+    }
+    #back-button {
+        background-color: #6c757d;
+        color: white;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 5px;
+        cursor: pointer;
+        transition: background-color 0.15s ease-in-out;
+    }
+    #back-button:hover {
+        background-color: #5a6268;
+    }
+</style>
+{% endblock %}
 
 {% block content %}
 <div class="container">
-    <h1>申请办公用品</h1>
-    <form method="post">
+    <h2>申请种子</h2>
+    <form method="POST" id="supply-request-form">
         {% csrf_token %}
-        {{ form.as_p }}
-        <h2>物品列表</h2>
+        
         {{ formset.management_form }}
-        <div id="item-formset">
-            {% for form in formset %}
-                <div class="item-form">
-                    {{ form.supply_option.label_tag }} {{ form.supply_option }}
-                    {{ form.quantity.label_tag }} {{ form.quantity }}
-                    {% if form.instance.pk %}{{ form.DELETE }}{% endif %}
+        <div id="supply-items">
+            {% for item_form in formset %}
+                <div class="supply-item">
+                    <div class="form-row">
+                        <div class="form-group">
+                            <label>种子:</label>
+                            {{ item_form.office_supply }}
+                        </div>
+                        <div class="form-group">
+                            <label>数量:</label>
+                            {{ item_form.quantity }}
+                        </div>
+                        <div class="form-group" style="flex: 0 0 auto; align-self: flex-end;">
+                            <button type="button" class="delete-item">删除</button>
+                        </div>
+                    </div>
                 </div>
             {% endfor %}
         </div>
-        <button type="button" id="add-item" class="btn btn-secondary">添加物品</button>
-        <button type="submit" class="btn btn-primary">提交申请</button>
+        <div class="form-group">
+            <label for="id_purpose">申请用途：</label>
+            {{ form.purpose }}
+        </div>
+        <button type="button" id="add-item">添加种子</button>
+        <button type="submit">提交申请</button>
+        <div class="form-actions">
+            {% comment %} <button type="button" id="back-button">返回</button> {% endcomment %}
+        </div>
     </form>
 </div>
+{% endblock %}
 
+{% block extra_js %}
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        const addItemButton = document.getElementById('add-item');
-        const itemFormset = document.getElementById('item-formset');
-        const totalFormsInput = document.getElementById('id_items-TOTAL_FORMS');
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM fully loaded');
 
-        addItemButton.addEventListener('click', function() {
-            const formCount = itemFormset.children.length;
-            const newForm = itemFormset.children[0].cloneNode(true);
-            
-            // Update form index
-            newForm.innerHTML = newForm.innerHTML.replace(/-0-/g, `-${formCount}-`);
-            
-            // Clear input values
-            newForm.querySelectorAll('select, input').forEach(input => {
+    const addButton = document.getElementById('add-item');
+    const supplyItems = document.getElementById('supply-items');
+    const totalForms = document.getElementById('id_form-TOTAL_FORMS');
+
+    console.log('Add button:', addButton);
+    console.log('Supply items:', supplyItems);
+    console.log('Total forms:', totalForms);
+
+    function updateElementIndex(el, prefix, ndx) {
+        const id_regex = new RegExp('(' + prefix + '-\\d+)');
+        const replacement = prefix + '-' + ndx;
+        if (el.id) el.id = el.id.replace(id_regex, replacement);
+        if (el.name) el.name = el.name.replace(id_regex, replacement);
+    }
+
+    function addForm(event) {
+        console.log('Add form function called');
+        event.preventDefault();
+        const formCount = parseInt(totalForms.value);
+        console.log('Current form count:', formCount);
+
+        if (supplyItems.children.length === 0) {
+            console.error('No supply items to clone');
+            return;
+        }
+
+        const newItem = supplyItems.children[0].cloneNode(true);
+        
+        newItem.querySelectorAll('input, select').forEach(input => {
+            updateElementIndex(input, 'form', formCount);
+            if (input.type !== 'hidden') {
                 input.value = '';
-            });
-
-            itemFormset.appendChild(newForm);
-            totalFormsInput.value = formCount + 1;
+            }
         });
+
+        const deleteButton = newItem.querySelector('.delete-item');
+        if (deleteButton) {
+            deleteButton.addEventListener('click', deleteForm);
+        }
+
+        supplyItems.appendChild(newItem);
+        totalForms.value = formCount + 1;
+        console.log('New form added. New count:', totalForms.value);
+    }
+
+    function deleteForm(event) {
+        console.log('Delete form function called');
+        event.preventDefault();
+        const formCount = parseInt(totalForms.value);
+        if (formCount > 1) {
+            event.target.closest('.supply-item').remove();
+            totalForms.value = formCount - 1;
+            
+            const forms = supplyItems.children;
+            for (let i = 0; i < forms.length; i++) {
+                forms[i].querySelectorAll('input, select').forEach(input => {
+                    updateElementIndex(input, 'form', i);
+                });
+            }
+        } else {
+            alert('至少需要保留一个物品项');
+        }
+    }
+
+    if (addButton) {
+        console.log('Adding click event listener to add button');
+        addButton.addEventListener('click', addForm);
+    } else {
+        console.error('Add button not found');
+    }
+
+    document.querySelectorAll('.delete-item').forEach(button => {
+        button.addEventListener('click', deleteForm);
     });
+
+    // 添加返回按钮的功能
+    const backButton = document.getElementById('back-button');
+    if (backButton) {
+        backButton.addEventListener('click', function() {
+            window.history.back();
+        });
+    } else {
+        console.error('Back button not found');
+    }
+});
 </script>
 {% endblock %}

@@ -1,48 +1,77 @@
-{% extends 'base.html' %}
+{% extends "base.html" %}
 
-{% block title %}我的办公用品申请{% endblock %}
+{% load static %}
+
+{% block extra_head %}
+<link rel="stylesheet" type="text/css" href="{% static 'css/supply_request_list.css' %}">
+{% endblock %}
 
 {% block content %}
-<h1>我的办公用品申请</h1>
-{% if supply_requests %}
-    <table border="1">
+<div class="supply-request-content">
+    <h1>种子申请列表</h1>
+
+    <a href="{% url 'create_supply_request' %}" class="btn">新建申请</a>
+
+    {% if supply_requests %}
+    <table>
         <thead>
             <tr>
-                <th>申请编号</th>
-                <th>申请原因</th>
-                <th>办公用品</th>
-                <th>数量</th>
-                <th>状态</th>
-                <th>创建时间</th>
+                <th>申请日期</th>
+                <th>申请物品</th>
+                <th>申请目的</th>
+                <th>当前状态</th>
+                {% comment %} <th>操作</th> {% endcomment %}
             </tr>
         </thead>
         <tbody>
-        {% for request_data in supply_requests %}
+            {% for request in supply_requests %}
             <tr>
-                <td>{{ request_data.request.id }}</td>
-                <td>{{ request_data.request.reason }}</td>
+                <td>{{ request.created_at|date:"Y-m-d H:i" }}</td>
                 <td>
                     <ul>
-                    {% for item in request_data.items %}
-                        <li>{{ item.supply_option.name }}</li>
-                    {% endfor %}
+                        {% for item in request.items.all %}
+                        <li><strong>{{ item.item.name }}</strong> (数量: {{ item.quantity }})</li>
+                        {% endfor %}
                     </ul>
                 </td>
+                <td>{{ request.purpose|truncatechars:50 }}</td>
                 <td>
-                    <ul>
-                    {% for item in request_data.items %}
-                        <li>{{ item.quantity }}</li>
-                    {% endfor %}
-                    </ul>
+                    <span class="badge badge-{{ request.status }}">
+                        {{ request.status }}
+                    </span>
                 </td>
-                <td>{{ request_data.request.status }}</td>
-                <td>{{ request_data.request.created_at }}</td>
+                {% comment %} <td>
+                    <a href="{% url 'supply_request_detail' request.id %}" class="btn btn-detail">详情</a>
+                </td> {% endcomment %}
             </tr>
-        {% endfor %}
+            {% endfor %}
         </tbody>
     </table>
-{% else %}
-    <p>你还没有提交过办公用品申请。</p>
-{% endif %}
-<a href="{% url 'create_supply_request' %}">新建申请</a>
+
+    {% if is_paginated %}
+    <ul class="pagination">
+        {% if page_obj.has_previous %}
+        <li><a href="?page={{ page_obj.previous_page_number }}">&laquo;</a></li>
+        {% endif %}
+
+        {% for num in page_obj.paginator.page_range %}
+        {% if page_obj.number == num %}
+        <li class="active"><a href="#">{{ num }}</a></li>
+        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+        <li><a href="?page={{ num }}">{{ num }}</a></li>
+        {% endif %}
+        {% endfor %}
+
+        {% if page_obj.has_next %}
+        <li><a href="?page={{ page_obj.next_page_number }}">&raquo;</a></li>
+        {% endif %}
+    </ul>
+    {% endif %}
+
+    {% else %}
+    <div class="alert">
+        暂无申请记录
+    </div>
+    {% endif %}
+</div>
 {% endblock %}

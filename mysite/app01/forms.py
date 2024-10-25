@@ -35,7 +35,11 @@ class ApprovalStepForm(forms.ModelForm):
 
     class Meta:
         model = ApprovalStep
-        fields = ['process_name', 'step_number', 'approvers', 'is_countersign']
+        fields = ['process_name', 'step_number', 'approvers', 'is_countersign', 'order']
+        labels = {
+            'step_number': '步骤编号',
+            'order': '排序',
+        }
         widgets = {
             'process_name': forms.TextInput(attrs={'class': 'form-control'}),
             'step_number': forms.NumberInput(attrs={'class': 'form-control'}),
@@ -66,4 +70,7 @@ STATUS_CHOICES = [
     ('approved', '已批准'),
     ('rejected', '已拒绝'),
 ]
+
+
+
 
