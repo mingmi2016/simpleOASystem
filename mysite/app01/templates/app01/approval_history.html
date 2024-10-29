@@ -2,49 +2,240 @@
 {% extends 'base.html' %}
 
 {% block content %}
-<div class="container">
+<div style="padding: 20px;">
     <h2>审批历史</h2>
-    {% for data in requests_data %}
-        <div class="request-card">
-            <div class="request-info">
-                <h3>申请编号: {{ data.request.id }}</h3>
-                <p><strong>申请人:</strong> {{ data.request.requester.username }}</p>
-                <p><strong>申请时间:</strong> {{ data.request.created_at|date:"Y-m-d H:i" }}</p>
-                <p><strong>申请状态:</strong> <span class="status {{ data.request.status }}">{{ data.request.status }}</span></p>
-                <p><strong>申请目的:</strong> {{ data.request.purpose }}</p>
+    
+    {% for history in history_list %}
+    <div style="border: 1px solid #ddd; margin-bottom: 20px; padding: 15px; border-radius: 5px;">
+        <!-- 使用 flex 布局实现三列并排显示 -->
+        <div style="display: flex; gap: 20px;">
+            <!-- 申请编号部分 - 20% -->
+            <div style="flex: 0 0 20%; padding: 10px; background-color: #f5f5f5; border-radius: 5px;">
+                <h3 style="margin-top: 0; margin-bottom: 10px;">申请信息</h3>
+                <div><strong>申请编号:</strong> {{ history.request.id }}</div>
+                <div><strong>申请时间:</strong> {{ history.request.created_at|date:"Y-m-d H:i:s" }}</div>
+                <div><strong>申请人:</strong> {{ history.request.requester.username }}</div>
+                <div style="margin-top: 10px;">
+                    <strong>当前状态:</strong> 
+                    <span style="
+                        display: inline-block;
+                        padding: 2px 6px;
+                        border-radius: 3px;
+                        {% if history.request.status == 'approved' %}
+                            background-color: #4CAF50;
+                            color: white;
+                        {% elif history.request.status == 'rejected' %}
+                            background-color: #f44336;
+                            color: white;
+                        {% elif history.request.status == 'pending' %}
+                            background-color: #ffd700;
+                            color: black;
+                        {% else %}
+                            background-color: #808080;
+                            color: white;
+                        {% endif %}
+                    ">
+                        {{ history.request.status }}
+                    </span>
+                </div>
+                {% if history.request.status == 'pending' %}
+                    <div style="margin-top: 10px;">
+                        <button class="btn-resend" data-request-id="{{ history.request.id }}" style="padding: 5px 10px; background-color: #4CAF50; color: white; border: none; border-radius: 3px; cursor: pointer;">
+                            重发邮件
+                        </button>
+                    </div>
+                {% endif %}
             </div>
             
-            <div class="request-details">
-                <div class="request-items">
-                    <h4>申请物品:</h4>
-                    <ul>
-                        {% for item in data.items %}
-                            <li>{{ item.office_supply.name }} - 数量: {{ item.quantity }}</li>
-                        {% endfor %}
-                    </ul>
-                </div>
-                
-                <div class="approval-history">
-                    <h4>审批历史:</h4>
-                    <ul>
-                        {% for approval in data.approvals %}
-                            <li class="approval-item">
-                                <div class="approval-info">
-                                    <span class="approver">{{ approval.approver.username }}</span>
-                                    <span class="approval-status {{ approval.status }}">{{ approval.status }}</span>
-                                    <span class="approval-time">{{ approval.created_at|date:"Y-m-d H:i" }}</span>
+            <!-- 申请物品部分 - 20% -->
+            <div style="flex: 0 0 20%; padding: 10px; background-color: #f5f5f5; border-radius: 5px;">
+                <h3 style="margin-top: 0; margin-bottom: 10px;">申请物品</h3>
+                {% for item in history.items %}
+                    <div style="margin-bottom: 5px;">
+                        <div>物品名称: {{ item.office_supply.name }}</div>
+                        <div>数量: {{ item.quantity }}</div>
+                        {% if item.office_supply.unit %}
+                            <div>单位: {{ item.office_supply.unit }}</div>
+                        {% endif %}
+                    </div>
+                {% empty %}
+                    <div>无物品</div>
+                {% endfor %}
+            </div>
+            
+            <!-- 审批历史部分 - 60% -->
+            <div style="flex: 0 0 60%; padding: 10px; background-color: #f5f5f5; border-radius: 5px;">
+                <h3 style="margin-top: 0; margin-bottom: 10px;">审批历史</h3>
+                <div style="display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;">
+                    {% for approval in history.approvals %}
+                        <div style="
+                            padding: 8px; 
+                            border-left: 3px solid #4CAF50;
+                            background-color: white;
+                            border-radius: 0 3px 3px 0;
+                            font-size: 0.9em;
+                            position: relative;
+                        ">
+                            <!-- 序号 -->
+                            <div style="
+                                position: absolute;
+                                top: -8px;
+                                left: -8px;
+                                background-color: #4CAF50;
+                                color: white;
+                                width: 20px;
+                                height: 20px;
+                                border-radius: 50%;
+                                display: flex;
+                                align-items: center;
+                                justify-content: center;
+                                font-size: 0.8em;
+                                font-weight: bold;
+                            ">
+                                {{ forloop.counter }}
+                            </div>
+
+                            <div style="display: flex; justify-content: space-between;">
+                                <span><strong>审批人:</strong> {{ approval.approver.username }}</span>
+                                <span>
+                                    <strong>状态:</strong> 
+                                    <span style="
+                                        display: inline-block;
+                                        padding: 2px 6px;
+                                        border-radius: 3px;
+                                        {% if approval.status == 'approved' %}
+                                            background-color: #4CAF50;
+                                            color: white;
+                                        {% elif approval.status == 'rejected' %}
+                                            background-color: #f44336;
+                                            color: white;
+                                        {% elif approval.status == 'pending' %}
+                                            background-color: #ffd700;
+                                            color: black;
+                                        {% else %}
+                                            background-color: #808080;
+                                            color: white;
+                                        {% endif %}
+                                    ">
+                                        {{ approval.status }}
+                                    </span>
+                                </span>
+                            </div>
+                            <div style="margin-top: 4px; display: flex; justify-content: space-between;">
+                                <span>
+                                    <strong>类型:</strong> 
+                                    {% if approval.step.is_countersign %}
+                                        <span style="color: #2196F3;">会签</span>
+                                    {% else %}
+                                        <span>普通审批</span>
+                                    {% endif %}
+                                </span>
+                                <span>
+                                    <strong>方式:</strong> 
+                                    {% if approval.comment %}
+                                        <span style="color: #4CAF50;">系统审批</span>
+                                    {% else %}
+                                        <span style="color: #FF9800;">邮件审批</span>
+                                    {% endif %}
+                                </span>
+                            </div>
+                            <div style="margin-top: 4px;">
+                                <strong>时间:</strong> {{ approval.created_at|date:"Y-m-d H:i:s" }}
+                            </div>
+                            {% if approval.comment %}
+                                <div style="margin-top: 4px;">
+                                    <strong>意见:</strong> {{ approval.comment }}
                                 </div>
-                                {% if approval.comment %}
-                                    <p class="approval-comment">{{ approval.comment }}</p>
-                                {% endif %}
-                            </li>
-                        {% endfor %}
-                    </ul>
+                            {% endif %}
+                        </div>
+                    {% empty %}
+                        <div>无审批记录</div>
+                    {% endfor %}
                 </div>
             </div>
         </div>
+    </div>
+    {% empty %}
+    <div style="text-align: center; padding: 20px;">暂无审批记录</div>
     {% endfor %}
+
+    <!-- 分页部分 -->
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div style="margin-top: 20px; text-align: center;">
+        <div style="display: inline-block; padding: 10px; background-color: #f5f5f5; border-radius: 5px;">
+            <!-- 首页和上一页 -->
+            {% if page_obj.has_previous %}
+                <a href="?page=1" style="padding: 5px 10px; border: 1px solid #ddd; text-decoration: none; color: #333;">首页</a>
+                <a href="?page={{ page_obj.previous_page_number }}" style="padding: 5px 10px; border: 1px solid #ddd; text-decoration: none; color: #333;">上一页</a>
+            {% endif %}
+
+            <!-- 页码 -->
+            {% for num in page_obj.paginator.page_range %}
+                {% if num == page_obj.number %}
+                    <span style="padding: 5px 10px; border: 1px solid #4CAF50; background-color: #4CAF50; color: white;">{{ num }}</span>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                    <a href="?page={{ num }}" style="padding: 5px 10px; border: 1px solid #ddd; text-decoration: none; color: #333;">{{ num }}</a>
+                {% endif %}
+            {% endfor %}
+
+            <!-- 下一页和末页 -->
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}" style="padding: 5px 10px; border: 1px solid #ddd; text-decoration: none; color: #333;">下一页</a>
+                <a href="?page={{ page_obj.paginator.num_pages }}" style="padding: 5px 10px; border: 1px solid #ddd; text-decoration: none; color: #333;">末页</a>
+            {% endif %}
+        </div>
+    </div>
+    {% endif %}
 </div>
+
+<!-- 在页面最底部添加 JavaScript -->
+<script type="text/javascript">
+    document.addEventListener('DOMContentLoaded', function() {
+        // 为所有重发邮件按钮添加点击事件
+        document.querySelectorAll('.btn-resend').forEach(button => {
+            button.addEventListener('click', function() {
+                const requestId = this.getAttribute('data-request-id');
+                if (!confirm('确定要重发邮件吗？')) {
+                    return;
+                }
+
+                fetch(`/app01/resend-email/${requestId}/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': getCookie('csrftoken'),
+                    },
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        alert('邮件重发成功！');
+                    } else {
+                        alert('邮件重发失败：' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('邮件重发失败，请稍后重试');
+                });
+            });
+        });
+
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+    });
+</script>
 {% endblock %}
 
 {% block extra_css %}

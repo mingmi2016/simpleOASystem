@@ -33,4 +33,6 @@ urlpatterns = [
     path('approval-already-processed/', views.approval_already_processed, name='approval_already_processed'),
     path('approval-detail/<int:approval_id>/', views.approval_detail, name='approval_detail'),
     path('operation-logs/', views.operation_logs, name='operation_logs'),
+    path('resend-approval-email/<int:history_id>/', views.resend_approval_email, name='resend_approval_email'),
+    path('resend-email/<int:request_id>/', views.resend_email, name='resend_email'),
 ]

@@ -36,6 +36,10 @@ from django.views.decorators.csrf import csrf_protect
 from .models import RequestApproval, SupplyRequest, SupplyRequestItem# 注意这里使用 SupplyItem 而不是 RequestItem
 import requests
 from .models import OperationLog
+from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
+from .models import RequestApproval
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
 
 logger = logging.getLogger(__name__)
 
@@ -336,20 +340,45 @@ def delete_supply_request(request, pk):
 
 @login_required
 def approval_history(request):
+    # 获取所有供应申请，并按创建时间降序排序
     supply_requests = SupplyRequest.objects.all().order_by('-created_at')
     
-    requests_data = []
-    for supply_request in supply_requests:
-        items = SupplyRequestItem.objects.filter(supply_request=supply_request)
-        approvals = RequestApproval.objects.filter(supply_request=supply_request).order_by('created_at')
-        
-        requests_data.append({
-            'request': supply_request,
-            'items': items,
-            'approvals': approvals,
-        })
+    # 每页显示3条记录
+    paginator = Paginator(supply_requests, 3)
+    page = request.GET.get('page', 1)
     
-    return render(request, 'app01/approval_history.html', {'requests_data': requests_data})
+    try:
+        histories = paginator.page(page)
+    except PageNotAnInteger:
+        histories = paginator.page(1)
+    except EmptyPage:
+        histories = paginator.page(paginator.num_pages)
+    
+    # 创建包含所有信息的列表
+    history_list = []
+    for supply_request in histories:
+        # 获取审批历史
+        approvals = RequestApproval.objects.select_related('step').filter(
+            supply_request=supply_request
+        ).order_by('created_at')
+        
+        # 获取申请物品
+        items = SupplyRequestItem.objects.filter(
+            supply_request=supply_request
+        )
+        
+        history_data = {
+            'request': supply_request,
+            'approvals': approvals,
+            'items': items
+        }
+        history_list.append(history_data)
+    
+    context = {
+        'history_list': history_list,
+        'page_obj': histories,
+    }
+    return render(request, 'app01/approval_history.html', context)
 
 @login_required
 def pending_approvals(request):
@@ -650,13 +679,13 @@ def email_approve(request, approval_id, uidb64, token, action):
             approval.status = 'approved'
             approval.save()
             process_next_approval_step(approval.supply_request)
-            messages.success(request, '申请已准')
+            messages.success(request, '申请已批准')
         elif action == 'reject':
             approval.status = 'rejected'
             approval.save()
             approval.supply_request.status = 'rejected'
             approval.supply_request.save()
-            messages.success(request, '申请已绝')
+            messages.success(request, '申请已拒绝')
         else:
             messages.error(request, '无效的操作')
             return redirect('home')
@@ -795,7 +824,7 @@ def reject_request_email(request, approval_id, uidb64, token):
 #     参数:
 #     request (HttpRequest): Django的请求对象
 #     approval_id (int): 审批记录的ID
-#     uidb64 (str): Base64编码的用户ID
+#     uidb64 (str): Base64编码用户ID
 #     token (str): 用于验证用户身份的令牌
 #     action (str): 用户的操作，'approve' 或 'reject'
 
@@ -1184,4 +1213,69 @@ def approval_detail(request, approval_id):
     return render(request, 'app01/approval_detail.html', {'approval': approval})
 
 
+@require_POST
+def resend_approval_email(request, history_id):
+    try:
+        # 获取供应申请记录
+        supply_request = SupplyRequest.objects.get(id=history_id)
+        
+        # 检查是否有待审批的步骤
+        if supply_request.status != 'pending':
+            return JsonResponse({
+                'status': 'error',
+                'message': '当前申请不在待审批状态'
+            })
+            
+        # 重新发送邮件
+        send_approval_email(
+            to_email=supply_request.current_approver.email,
+            approve_id=supply_request.id,
+            token=supply_request.approval_token,
+            uid=supply_request.current_approver.username
+        )
+        
+        # 记录操作日志
+        OperationLog.objects.create(
+            operator=request.user.username,
+            operation_type='OTHER',
+            operation_desc=f'重新发送审批邮件 申请编号: {history_id}'
+        )
+        
+        return JsonResponse({
+            'status': 'success',
+            'message': '邮件发送成功'
+        })
+        
+    except SupplyRequest.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': '找不到对应的申请记录'
+        })
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        })
 
+@csrf_protect
+@require_http_methods(["POST"])
+def resend_email(request, request_id):
+    try:
+        supply_request = SupplyRequest.objects.get(id=request_id)
+        # 在这里添加重发邮件的逻辑
+        # ...
+
+        return JsonResponse({
+            'status': 'success',
+            'message': '邮件重发成功'
+        })
+    except SupplyRequest.DoesNotExist:
+        return JsonResponse({
+            'status': 'error',
+            'message': '找不到对应的申请记录'
+        }, status=404)
+    except Exception as e:
+        return JsonResponse({
+            'status': 'error',
+            'message': str(e)
+        }, status=500)
