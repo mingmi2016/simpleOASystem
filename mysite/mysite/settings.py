@@ -38,6 +38,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django_apscheduler',                # 调度器
     'app01',
     # ... 你其他应用 ...
 ]
@@ -90,8 +91,10 @@ DATABASES = {
         'HOST': '127.0.0.1',   #这个地方和php就不同，
         'PORT': 3306,
         'OPTIONS': {
-            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
             'charset': 'utf8mb4',
+            'use_unicode': True,
+            'init_command': "SET sql_mode='STRICT_TRANS_TABLES'",
+            'autocommit': True,
         },
     }
 
@@ -172,26 +175,66 @@ EMAIL_HOST_PASSWORD = 'D4ss8brL5WKAq7ry'  # 授权码
 # EMAIL_FROM = '南农水稻所审批<t2024087@njau.edu.cn>' #收件人看到的发件人
 DEFAULT_FROM_EMAIL = '南农种子申请审批<t2024087@njau.edu.cn>' #收件人看到的发件人
 
-# 添加日志配置
+# 创建日志目录
+LOG_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), 'logs')
+if not os.path.exists(LOG_DIR):
+    os.makedirs(LOG_DIR)
+
+# 日志配置
 LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '[{asctime}] {levelname} {module} {message}',
+            'style': '{',
+        },
+    },
     'handlers': {
         'file': {
             'level': 'DEBUG',
             'class': 'logging.FileHandler',
-            'filename': 'debug.log',
+            'filename': os.path.join(LOG_DIR, 'django.log'),
+            'formatter': 'verbose',
+            'encoding': 'utf-8',
+        },
+        'scheduler_file': {
+            'level': 'DEBUG',
+            'class': 'logging.FileHandler',
+            'filename': os.path.join(LOG_DIR, 'scheduler.log'),
+            'formatter': 'verbose',
+            'encoding': 'utf-8',
         },
     },
     'loggers': {
-        'django': {
+        '': {  # root logger
             'handlers': ['file'],
             'level': 'DEBUG',
             'propagate': True,
         },
+        'django': {
+            'handlers': ['file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'django.db.backends': {
+            'handlers': ['file'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'app01': {  # 你的应用日志
+            'handlers': ['file'],
+            'level': 'DEBUG',  # 设置为 DEBUG 以显示所有日志
+            'propagate': False,
+        },
     },
 }
 
+# APScheduler 配置
+APSCHEDULER_DATETIME_FORMAT = "N j, Y, f:s a"  # 日期时间格式
+SCHEDULER_DEFAULT = True
+
 # 在文件的其他地方添加这一行
 SITE_URL = 'http://127.0.0.1:8000/'  # 开发环境
+OUTER_URL = 'http://127.0.0.1:5000/api/'  # 外部服务
 # SITE_URL = 'https://yourdomain.com/'  # 生产环境

@@ -91,3 +91,4 @@ def get_next_approver(supply_request):
                 # 如果是组，可能需要选择组中的一个成员
                 return next_step.approver_group.user_set.first()
     return None
+

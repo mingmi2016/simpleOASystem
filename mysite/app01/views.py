@@ -34,6 +34,8 @@ from django.forms import inlineformset_factory
 from django.utils.encoding import force_str
 from django.views.decorators.csrf import csrf_protect
 from .models import RequestApproval, SupplyRequest, SupplyRequestItem# 注意这里使用 SupplyItem 而不是 RequestItem
+import requests
+from .models import OperationLog
 
 logger = logging.getLogger(__name__)
 
@@ -530,7 +532,7 @@ def delete_approval_step(request, step_id):
 from django.urls import reverse
 from django.core.mail import send_mail
 from django.conf import settings
-
+from urllib.parse import urlencode
 
 
 
@@ -540,27 +542,44 @@ def send_approval_email(supply_request, approver):
     approve_token = default_token_generator.make_token(approver)
     uid = urlsafe_base64_encode(force_bytes(approver.pk))
     approval = RequestApproval.objects.get(supply_request=supply_request, approver=approver, status='pending')
-    
-    approve_url = reverse('approve_request_email', kwargs={
-        'approval_id': approval.id,
-        'uidb64': uid,
-        'token': approve_token
-    })
-    reject_url = reverse('reject_request_email', kwargs={
-        'approval_id': approval.id,
-        'uidb64': uid,
-        'token': approve_token
+
+    # 准备查询参数
+    query_params = urlencode({
+        'id': approval.id,
+        'token': approve_token,
+        'uid': uid
     })
     
-    full_url = supply_request.build_absolute_uri(approve_url)
-    print(full_url)
+    # 生成基础 URL
+    # base_url_approve = reverse('approve_request_email')
+    # base_url_reject = reverse('reject_request_email')
+    # base_url_approve = 'approve_request_email'
+    # base_url_reject = 'reject_request_email'
+    base_url_approve = 'approve'
+    base_url_reject = 'reject'
+    
+    # 组合完整的 URL
+    # full_url = f"{request.build_absolute_uri(base_url)}?{query_params}"
+    approve_url = f"{settings.OUTER_URL}{base_url_approve}?{query_params}"
+    reject_url = f"{settings.OUTER_URL}{base_url_reject}?{query_params}"
 
-    site_url = settings.SITE_URL.rstrip('/')
-    approve_url = f"{site_url}{approve_url}"
-    reject_url = f"{site_url}{reject_url}"
-
-    print(reject_url)
-    print(approve_url)
+    # print(approve_url)
+    # print(reject_url)
+    # region 内部系统使用的url
+    # approve_url = reverse('approve_request_email', kwargs={
+    #     'approval_id': approval.id,
+    #     'uidb64': uid,
+    #     'token': approve_token
+    # })
+    # reject_url = reverse('reject_request_email', kwargs={
+    #     'approval_id': approval.id,
+    #     'uidb64': uid,
+    #     'token': approve_token
+    # })
+    # site_url = settings.SITE_URL.rstrip('/')
+    # approve_url = f"{site_url}{approve_url}"
+    # reject_url = f"{site_url}{reject_url}"
+    # endregion
 
     try:
         items = SupplyRequestItem.objects.filter(supply_request=supply_request)
@@ -609,10 +628,13 @@ def send_approval_email(supply_request, approver):
         """
         send_mail(subject, message, from_email, recipient_list, fail_silently=False)
 
-   # '<p><a href="%s">%s<a></p>' % (approver.username, supply_request.requester, supply_request.purpose, item_list, approve_url, reject_url)
-    # send_mail(subject,"", settings.DEFAULT_FROM_EMAIL, [self.approver.email], html_message=html_message)
-    # msg='<a href="http://xxx" target="_blank">击激活</a>'
-    # send_mail('注册激活','',settings.DEFAULT_FROM_EMAIL, ['t2024087@njau.edu.cn'], html_message=msg)
+    # 操作日志
+    OperationLog.objects.create(
+        operator='system',
+        operation_type='Send_Email',
+        operation_desc=f'收件人：{approver.username}; 申请编号: {supply_request.id}; 审批编号: {approval.id}'
+    )
+
 
 def email_approve(request, approval_id, uidb64, token, action):
     try:
@@ -861,11 +883,13 @@ def process_email_approval(request, approval_id, uidb64, token , approve):
         user = User.objects.get(pk=uid)
     except (TypeError, ValueError, OverflowError, User.DoesNotExist):
         messages.error(request, "无效的用户 ID")
+        print("无效的用户 ID")
         return redirect('approval_error')
 
     # 验证用户身份和令牌有效性
     if not default_token_generator.check_token(user, token):
         messages.error(request, "无效的令牌")
+        print("无效的令牌")
         return redirect('approval_error')
 
     # 获取特定的审批记录
@@ -873,28 +897,39 @@ def process_email_approval(request, approval_id, uidb64, token , approve):
         request_approval = RequestApproval.objects.get(id=approval_id, approver=user)
     except RequestApproval.DoesNotExist:
         messages.error(request, "找不到对应的审批记录")
+        print("找不到对应的审批记录")
         return redirect('approval_error')
 
     if request_approval.status != 'pending':
         messages.warning(request, "该审批已经被处理")
+        print("该审批已经被处理")
         return redirect('approval_already_processed')
 
     with transaction.atomic():
         supply_request = request_approval.supply_request
         current_step = request_approval.step
 
-        # 检查当前申请是否已被取消
+         # 检查当前申请是否已被取消
         if supply_request.status == 'rejected':
             messages.warning(request, "该申请已被拒绝，无法进行进一步操作。")
+            print("该申请已被拒绝，无法进行进一步操作。")
             return redirect('approval_cancelled')
 
         if request_approval.status == 'cancelled':
             messages.warning(request, "该审批步骤已被取消，无法进行进一步操作。")
+            print("该审批步骤已被取消，无法进行进一步操作。")
             return redirect('approval_cancelled')
 
         if approve:
             request_approval.status = 'approved'
             request_approval.save()
+
+            OperationLog.objects.create(
+                operator='system',
+                operation_type='Handle_Email',
+                operation_desc=f'{request_approval.approver.username} approved 申请编号: {supply_request.id}; 审批编号: {request_approval.id}'
+            )
+
 
             # 检查当前步骤是否完成（所有未取消的审批都已赞成）
             all_approved = not RequestApproval.objects.filter(
@@ -916,6 +951,11 @@ def process_email_approval(request, approval_id, uidb64, token , approve):
                     # 不存在下一个步骤，申请已全部批准
                     supply_request.status = 'approved'
                     supply_request.save()
+                    OperationLog.objects.create(
+                        operator='system',
+                        operation_type='Approve_Finish',
+                        operation_desc=f'申请编号: {supply_request.id} 审批完成,审批状态为:approved' 
+                    )
                     send_final_approval_email(supply_request)
                 
                 # 如果是会签，通知其他审批人该步骤已完成
@@ -937,15 +977,28 @@ def process_email_approval(request, approval_id, uidb64, token , approve):
             #     fail_silently=False,
             # )
             messages.success(request, "审批成功")
+            print("审批成功")
             return redirect('approval_success')
 
         else:  # 拒绝
             request_approval.status = 'rejected'
             request_approval.save()
 
+            OperationLog.objects.create(
+                operator='system',
+                operation_type='Handle_Email',
+                operation_desc=f'{request_approval.approver.username} rejected 申请编号: {supply_request.id}; 审批编号: {request_approval.id}'
+            )
+
             # 无论是否为会签，只要有一人拒绝，整个申请就被拒绝
             supply_request.status = 'rejected'
             supply_request.save()
+
+            OperationLog.objects.create(
+                operator='system',
+                operation_type='Approve_Finish',
+                operation_desc=f'申请编号: {supply_request.id} 审批完成,审批状态为:rejected' 
+            )
 
             # 将当前步骤的所有待处理审批都标记为已取消
             RequestApproval.objects.filter(
@@ -1015,6 +1068,43 @@ def approval_success(request):
 
 def approval_error(request):
     return render(request, 'app01/approval_error.html')
+
+
+def operation_logs(request):
+    # 获取查询参数
+    operator = request.GET.get('operator', '')
+    operation_type = request.GET.get('operation_type', '')
+    start_date = request.GET.get('start_date', '')
+    end_date = request.GET.get('end_date', '')
+    
+    # 构建查询
+    logs = OperationLog.objects.all()
+    
+    if operator:
+        logs = logs.filter(operator__icontains=operator)
+    if operation_type:
+        logs = logs.filter(operation_type=operation_type)
+    if start_date:
+        logs = logs.filter(operation_time__gte=start_date)
+    if end_date:
+        logs = logs.filter(operation_time__lte=end_date)
+        
+    # 分页
+    page = request.GET.get('page', 1)
+    paginator = Paginator(logs, 10)  # 每页显示10条
+    logs_page = paginator.get_page(page)
+    
+    context = {
+        'logs': logs_page,
+        'operation_types': OperationLog.OPERATION_CHOICES,
+        'operator': operator,
+        'operation_type': operation_type,
+        'start_date': start_date,
+        'end_date': end_date,
+    }
+    
+    return render(request, 'app01/operation_logs.html', context)
+
 
 
 
@@ -1092,5 +1182,6 @@ def approval_detail(request, approval_id):
             return process_approval(request, approval_id, approve=(action == 'approve'), comment=comment)
     
     return render(request, 'app01/approval_detail.html', {'approval': approval})
+
 
 

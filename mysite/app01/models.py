@@ -267,3 +267,39 @@ def request_approval_post_save(sender, instance, created, **kwargs):
 
 
 
+
+class OperationLog(models.Model):
+    # 操作类型选项
+    OPERATION_CHOICES = [
+        ('CREATE', '创建'),
+        ('UPDATE', '更新'),
+        ('DELETE', '删除'),
+        ('QUERY', '查询'),
+        ('APPROVE', '审批'),
+        ('REJECT', '拒绝'),
+        ('LOGIN', '登录'),
+        ('LOGOUT', '登出'),
+        ('Send_Email', '发送邮件'),
+        ('Handle_Email', '处理邮件'),
+        ('Approve_Finish', '审批完成'),
+        ('OTHER', '其他'),
+    ]
+
+    # 基本字段
+    operator = models.CharField(max_length=100, verbose_name='操作人')
+    operation_type = models.CharField(
+        max_length=20, 
+        choices=OPERATION_CHOICES,
+        verbose_name='操作类型'
+    )
+    operation_desc = models.CharField(max_length=500, verbose_name='操作描述')
+    operation_time = models.DateTimeField(default=timezone.now, verbose_name='操作时间')
+
+    class Meta:
+        verbose_name = '操作日志'
+        verbose_name_plural = '操作日志'
+        ordering = ['-operation_time']
+        db_table = 'operation_log'
+
+    def __str__(self):
+        return f"{self.operator} - {self.get_operation_type_display()} - {self.operation_time}"

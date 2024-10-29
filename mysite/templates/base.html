@@ -102,11 +102,13 @@
                     {% if user.is_staff %}
                         <li><a href="{% url 'approval_process_settings' %}">审批流程设置</a></li>
                     {% endif %}
+                    <li><a href="{% url 'operation_logs' %}">操作日志</a></li>
                     <li><a href="{% url 'logout' %}">登出</a></li>
                     <li class="user-info">当前用户: {{ user.username }}</li>
                 {% else %}
                     <li><a href="{% url 'login' %}">登录</a></li>
                 {% endif %}
+                <!-- 在导航菜单中添加 -->
             </ul>
         </nav>
     </header>
