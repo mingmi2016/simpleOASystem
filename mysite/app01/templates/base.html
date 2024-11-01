@@ -31,11 +31,14 @@
                     </li>
                     <!-- 可能的其他导航项 -->
                     <li class="nav-item">
-                        <a class="nav-link" href="{% url 'approval_list' %}">待审批列表</a>
+                        <a class="nav-link" href="{% url 'approval_list' %}">待审批列表111</a>
+                     {{ request.user.is_superuser }}111
                     </li>
+                    {% if user.is_superuser %}
                     <li class="nav-item">
                         <a class="nav-link" href="{% url 'approval_history' %}">审批历史</a>
                     </li>
+                    {% endif %}
                 </ul>
                 <ul class="navbar-nav ml-auto">
                     {% if user.is_authenticated %}

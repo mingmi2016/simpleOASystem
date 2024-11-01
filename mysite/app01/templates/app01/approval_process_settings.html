@@ -45,6 +45,101 @@
     .action-buttons .btn {
         margin-right: 5px;
     }
+
+    .add-step-form {
+        background-color: #f8f9fa;
+        border-radius: 5px;
+        padding: 20px;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .form-group label {
+        font-weight: 500;
+        color: #495057;
+        margin-bottom: 8px;
+    }
+
+    .form-control {
+        border: 1px solid #ced4da;
+        border-radius: 4px;
+        padding: 8px 12px;
+        transition: border-color 0.15s ease-in-out;
+    }
+
+    .form-control:focus {
+        border-color: #80bdff;
+        box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
+    }
+
+    .custom-radio-group {
+        display: flex;
+        gap: 20px;
+        margin: 10px 0;
+    }
+
+    .custom-radio-label {
+        display: inline-flex;
+        align-items: center;
+        cursor: pointer;
+        padding: 8px 16px;
+        border-radius: 4px;
+        transition: background-color 0.2s ease;
+    }
+
+    .custom-radio-label:hover {
+        background-color: #e9ecef;
+    }
+
+    .custom-radio-input {
+        display: none;
+    }
+
+    .custom-radio-mark {
+        width: 18px;
+        height: 18px;
+        border: 2px solid #28a745;
+        border-radius: 50%;
+        margin-right: 8px;
+        position: relative;
+        transition: all 0.2s ease;
+    }
+
+    .custom-radio-mark:before {
+        content: '';
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 10px;
+        height: 10px;
+        background: #28a745;
+        border-radius: 50%;
+        opacity: 0;
+        transition: all 0.2s ease;
+    }
+
+    .custom-radio-input:checked + .custom-radio-mark:before {
+        opacity: 1;
+    }
+
+    .custom-radio-text {
+        font-size: 14px;
+        color: #495057;
+    }
+
+    .submit-btn {
+        background-color: #28a745;
+        border: none;
+        padding: 10px 20px;
+        border-radius: 4px;
+        color: white;
+        font-weight: 500;
+        transition: background-color 0.2s ease;
+    }
+
+    .submit-btn:hover {
+        background-color: #218838;
+    }
 </style>
 {% endblock %}
 
@@ -85,19 +180,37 @@
 
         <div class="col-md-4">
             <h3>添加新的审批步骤</h3>
-            <form method="post" class="mt-3">
+            <form method="post" class="mt-3 add-step-form">
                 {% csrf_token %}
                 {% for field in form %}
-                    <div class="form-group">
-                        {{ field.label_tag }}
-                        {{ field }}
-                        {% if field.help_text %}
-                            <small class="form-text text-muted">{{ field.help_text }}</small>
-                        {% endif %}
-                        {% for error in field.errors %}
-                            <div class="invalid-feedback d-block">{{ error }}</div>
-                        {% endfor %}
-                    </div>
+                    {% if field.name == 'is_countersign' %}
+                        <div class="form-group">
+                            <label>{{ field.label }}</label>
+                            <div class="custom-radio-group">
+                                <label class="custom-radio-label">
+                                    <input type="radio" name="is_countersign" value="False" class="custom-radio-input" checked>
+                                    <span class="custom-radio-mark"></span>
+                                    <span class="custom-radio-text">普通步骤</span>
+                                </label>
+                                <label class="custom-radio-label">
+                                    <input type="radio" name="is_countersign" value="True" class="custom-radio-input">
+                                    <span class="custom-radio-mark"></span>
+                                    <span class="custom-radio-text">会签步骤</span>
+                                </label>
+                            </div>
+                        </div>
+                    {% else %}
+                        <div class="form-group">
+                            {{ field.label_tag }}
+                            {{ field }}
+                            {% if field.help_text %}
+                                <small class="form-text text-muted">{{ field.help_text }}</small>
+                            {% endif %}
+                            {% for error in field.errors %}
+                                <div class="invalid-feedback d-block">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
                 {% endfor %}
                 <button type="submit" class="btn btn-primary">添加步骤</button>
             </form>

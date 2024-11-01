@@ -1,107 +1,81 @@
 {% extends 'base.html' %}
 
-{% block title %}待审批请求{% endblock %}
-
 {% block content %}
-<div class="container">
-    <h1 class="page-title">待审批请求</h1>
-    {% if pending_approvals %}
-        <table class="approval-table">
+<div style="padding: 20px;">
+    <h2 style="margin-bottom: 20px;">待审批请求</h2>
+    
+    <!-- 日志列表 -->
+    <div style="overflow-x: auto;">
+        <table style="width: 100%; border-collapse: collapse; margin-bottom: 20px;">
             <thead>
-                <tr>
-                    <th>申请人</th>
-                    <th>申请日期</th>
-                    <th>申请物品</th>
-                    <th>申请目的</th>
-                    <th>当前步骤</th>
-                    <th>操作</th>
+                <tr style="background-color: #f5f5f5;">
+                    <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">申请编号</th>
+                    <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">申请人</th>
+                    <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">申请时间</th>
+                    <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">申请用途</th>
+                    <th style="padding: 12px; text-align: left; border-bottom: 2px solid #ddd;">操作</th>
                 </tr>
             </thead>
             <tbody>
-                {% for approval in pending_approvals %}
-                    <tr>
-                        <td>{{ approval.supply_request.requester.username }}</td>
-                        <td>{{ approval.supply_request.created_at|date:"Y-m-d H:i" }}</td>
-                        <td>
-                            <ul>
-                                {% for item in approval.supply_request.items.all %}
-                                <li>{{ item.office_supply.name }} (数量: {{ item.quantity }})</li>
-                                {% endfor %}
-                            </ul>
-                        </td>
-                        <td>{{ approval.supply_request.purpose }}</td>
-                        <td>步骤 {{ approval.step.step_number }}{% if approval.step.is_countersign %} (会签){% endif %}</td>
-                        <td>
-                            {% comment %} <a href="{% url 'approve_request' approval.id %}" class="btn btn-success">批准</a>
-                            <a href="{% url 'reject_request' approval.id %}" class="btn btn-danger">拒绝</a> {% endcomment %}
-                            <a href="{% url 'approval_detail' approval.id %}" class="btn btn-primary">审批</a>
-                        </td>
-                    </tr>
+                {% for request in request_list %}
+                <tr style="border-bottom: 1px solid #ddd;">
+                    <td style="padding: 12px;">{{ request.request.id }}</td>
+                    <td style="padding: 12px;">{{ request.request.requester.username }}</td>
+                    <td style="padding: 12px;">{{ request.request.created_at|date:"Y-m-d H:i:s" }}</td>
+                    <td style="padding: 12px;">{{ request.request.purpose|default:"无" }}</td>
+                    <td style="padding: 12px;">
+                        <a href="{% url 'approval_detail' request.request.id %}" 
+                           style="padding: 5px 15px; background-color: #4CAF50; color: white; text-decoration: none; border-radius: 4px;">
+                            审批
+                        </a>
+                    </td>
+                </tr>
                 {% empty %}
                 <tr>
-                    <td colspan="6">暂无待审批请求</td>
+                    <td colspan="6" style="padding: 12px; text-align: center;">暂无待审批请求</td>
                 </tr>
                 {% endfor %}
             </tbody>
         </table>
-    {% else %}
-        <p class="no-approvals">没有待审批的请求。</p>
+    </div>
+
+    <!-- 分页 -->
+    {% if page_obj.paginator.num_pages > 1 %}
+    <div style="display: flex; justify-content: space-between; align-items: center;">
+        <div style="color: #666;">
+            显示第 {{ page_obj.start_index }} 至 {{ page_obj.end_index }} 项结果，共 {{ page_obj.paginator.count }} 项
+        </div>
+        
+        <div style="display: flex; justify-content: center; gap: 5px;">
+            {% if page_obj.has_previous %}
+            <a href="?page={{ page_obj.previous_page_number }}"
+               style="padding: 5px 10px; border: 1px solid #ddd; text-decoration: none; color: #333;">
+                上页
+            </a>
+            {% endif %}
+
+            {% for num in page_obj.paginator.page_range %}
+                {% if num == page_obj.number %}
+                <a href="#"
+                   style="padding: 5px 10px; border: 1px solid #ddd; text-decoration: none; background-color: #4CAF50; color: white;">
+                    {{ num }}
+                </a>
+                {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                <a href="?page={{ num }}"
+                   style="padding: 5px 10px; border: 1px solid #ddd; text-decoration: none; color: #333;">
+                    {{ num }}
+                </a>
+                {% endif %}
+            {% endfor %}
+
+            {% if page_obj.has_next %}
+            <a href="?page={{ page_obj.next_page_number }}"
+               style="padding: 5px 10px; border: 1px solid #ddd; text-decoration: none; color: #333;">
+                下页
+            </a>
+            {% endif %}
+        </div>
+    </div>
     {% endif %}
 </div>
-
-<style>
-    .container {
-        max-width: 1200px;
-        margin: 0 auto;
-        padding: 20px;
-    }
-    .page-title {
-        color: #333;
-        margin-bottom: 20px;
-    }
-    .approval-table {
-        width: 100%;
-        border-collapse: collapse;
-        margin-top: 20px;
-    }
-    .approval-table th, .approval-table td {
-        border: 1px solid #ddd;
-        padding: 12px;
-        text-align: left;
-    }
-    .approval-table th {
-        background-color: #f2f2f2;
-        font-weight: bold;
-    }
-    .approval-table tr:nth-child(even) {
-        background-color: #f9f9f9;
-    }
-    .approval-table tr:hover {
-        background-color: #f5f5f5;
-    }
-    .item-list {
-        list-style-type: none;
-        padding: 0;
-        margin: 0;
-    }
-    .item-list li {
-        margin-bottom: 5px;
-    }
-    .btn {
-        display: inline-block;
-        padding: 8px 12px;
-        background-color: #007bff;
-        color: white;
-        text-decoration: none;
-        border-radius: 4px;
-        transition: background-color 0.3s;
-    }
-    .btn:hover {
-        background-color: #0056b3;
-    }
-    .no-approvals {
-        color: #666;
-        font-style: italic;
-    }
-</style>
 {% endblock %}

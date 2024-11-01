@@ -95,7 +95,7 @@ def process_approval(request, approval_id, approve, comment):
         return redirect('approval_cancelled')
 
     if request_approval.status == 'cancelled':
-        messages.warning(request, "该审批步骤已被取消，无法进行进一步操作。")
+        messages.warning(request, "该批步骤已被取消，无法进行进一步操作。")
         return redirect('approval_cancelled')
 
     if request_approval.status != 'pending':
@@ -108,6 +108,12 @@ def process_approval(request, approval_id, approve, comment):
     if approve:
         request_approval.status = 'approved'
         request_approval.save()
+
+        OperationLog.objects.create(
+            operator=request.user.username,
+            operation_type='System_Approve',
+            operation_desc=f'{request_approval.approver.username} approved 申请编号: {supply_request.id}; 审批编号: {request_approval.id}'
+        )
 
         # 检查当前步骤是否完成（所有未取消的审批都已赞成）
         all_approved = not RequestApproval.objects.filter(
@@ -129,6 +135,13 @@ def process_approval(request, approval_id, approve, comment):
                 # 不存在下一个步骤，申请已全部批准
                 supply_request.status = 'approved'
                 supply_request.save()
+
+                OperationLog.objects.create(
+                    operator='system',
+                    operation_type='Approve_Finish',
+                    operation_desc=f'申请编号: {supply_request.id} 审批完成,审批状态为:approved' 
+                )
+
                 send_final_approval_email(supply_request)
             
             # 如果是会签，通知其他审批人该步骤已完成
@@ -156,11 +169,24 @@ def process_approval(request, approval_id, approve, comment):
         request_approval.status = 'rejected'
         request_approval.save()
 
+        OperationLog.objects.create(
+            operator='system',
+            operation_type='System_Approve',
+            operation_desc=f'{request_approval.approver.username} rejected 申请编号: {supply_request.id}; 审批编号: {request_approval.id}'
+            )
+
         # 无论是否为会签，只要有一人拒绝，整个申请就被拒绝
         supply_request.status = 'rejected'
         supply_request.save()
 
-        # 将当前步骤的所有待处理审批都标记为已取消
+
+        OperationLog.objects.create(
+            operator='system',
+            operation_type='Approve_Finish',
+            operation_desc=f'申请编号: {supply_request.id} 审批完成,审批状态为:rejected' 
+        )
+        
+        # 将当前步骤的所有处理审批都标记为已取消
         RequestApproval.objects.filter(
             supply_request=supply_request,
             step=current_step,
@@ -251,8 +277,44 @@ def update_request_status(supply_request):
 
 @login_required
 def supply_request_list(request):
-    supply_requests = SupplyRequest.objects.all().order_by('-created_at')
-    return render(request, 'app01/supply_request_list.html', {'supply_requests': supply_requests})
+    # 获取当前用户的申请记录
+    requests = SupplyRequest.objects.filter(
+        requester=request.user
+    ).order_by('-created_at')
+
+    # 分页
+    paginator = Paginator(requests, 10)  # 每页显示10条
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+
+    # 准备数据
+    request_list = []
+    for req in page_obj:
+        # 获取申请物品
+        items = SupplyRequestItem.objects.filter(
+            supply_request=req
+        ).select_related('office_supply')
+
+        # 获取审批记录
+        approvals = RequestApproval.objects.filter(
+            supply_request=req
+        ).select_related(
+            'approver',
+            'step'
+        ).order_by('created_at')
+
+        request_list.append({
+            'request': req,
+            'items': items,
+            'approvals': approvals
+        })
+
+    context = {
+        'request_list': request_list,
+        'page_obj': page_obj,
+    }
+    
+    return render(request, 'app01/supply_request_list.html', context)
 
 @login_required
 def approval_list(request):
@@ -340,7 +402,7 @@ def delete_supply_request(request, pk):
 
 @login_required
 def approval_history(request):
-    # 获取所有供应申请，并按创建时间降序排序
+    # 获取申请，并按创建时间降序排序
     supply_requests = SupplyRequest.objects.all().order_by('-created_at')
     
     # 每页显示3条记录
@@ -382,18 +444,41 @@ def approval_history(request):
 
 @login_required
 def pending_approvals(request):
+    # 获取当前用户需要审批的记录
     pending_approvals = RequestApproval.objects.filter(
         approver=request.user,
-        status='pending'
+        status='pending',
+        supply_request__status='pending'  # 确保申请单也是待审批状态
     ).select_related(
         'supply_request__requester',
         'supply_request__current_step',
         'step'
-    ).prefetch_related(
-        Prefetch('supply_request__items', queryset=SupplyRequestItem.objects.all())
-    ).order_by('supply_request__created_at')
+    ).order_by('-supply_request__created_at')
 
-    return render(request, 'app01/pending_approvals.html', {'pending_approvals': pending_approvals})
+    # 分页处理
+    paginator = Paginator(pending_approvals, 10)  # 每页显示10条记录
+    page = request.GET.get('page', 1)
+    try:
+        page_obj = paginator.page(page)
+    except:
+        page_obj = paginator.page(1)
+
+    # 准备数据
+    request_list = []
+    for approval in page_obj:
+        request_list.append({
+            'request': approval.supply_request,
+            'approvals': approval.supply_request.requestapproval_set.all().order_by('created_at')
+        })
+
+    context = {
+        'request_list': request_list,
+        'page_obj': page_obj,
+        'total_count': paginator.count,  # 总记录数
+        'total_pages': paginator.num_pages,  # 总页数
+    }
+    
+    return render(request, 'app01/pending_approvals.html', context)
 
 
 from django.core.mail import EmailMessage
@@ -480,7 +565,7 @@ def email_approve(request, approval_id, uidb64, token, action):
         
         return redirect('approval_success')
     else:
-        messages.error(request, '无效的审批链接')
+        messages.error(request, '无效的审链接')
         return redirect('approval_error')
 
 def reject_request(request, token):
@@ -616,7 +701,7 @@ def send_approval_email(supply_request, approver):
     except ObjectDoesNotExist:
         item_list = "无法获取物品列表"
 
-    subject = f'办公用品申请审批 - 申编 {supply_request.id}'
+    subject = f'南农种子申请审批 - 申请编号 {supply_request.id}'
     from_email = settings.DEFAULT_FROM_EMAIL
     recipient_list = [approver.email]
  
@@ -919,6 +1004,13 @@ def process_email_approval(request, approval_id, uidb64, token , approve):
     if not default_token_generator.check_token(user, token):
         messages.error(request, "无效的令牌")
         print("无效的令牌")
+
+        OperationLog.objects.create(
+            operator='system',
+            operation_type='Exception',
+            operation_desc=f'无效的令牌! uid:{uidb64},token:{token} 申请编号: {approval_id}; 审批编号: {approval_id}'
+        )
+
         return redirect('approval_error')
 
     # 获取特定的审批记录
@@ -955,7 +1047,7 @@ def process_email_approval(request, approval_id, uidb64, token , approve):
 
             OperationLog.objects.create(
                 operator='system',
-                operation_type='Handle_Email',
+                operation_type='Email_Approve',
                 operation_desc=f'{request_approval.approver.username} approved 申请编号: {supply_request.id}; 审批编号: {request_approval.id}'
             )
 
@@ -1015,7 +1107,7 @@ def process_email_approval(request, approval_id, uidb64, token , approve):
 
             OperationLog.objects.create(
                 operator='system',
-                operation_type='Handle_Email',
+                operation_type='Email_Approve',
                 operation_desc=f'{request_approval.approver.username} rejected 申请编号: {supply_request.id}; 审批编号: {request_approval.id}'
             )
 
@@ -1029,7 +1121,7 @@ def process_email_approval(request, approval_id, uidb64, token , approve):
                 operation_desc=f'申请编号: {supply_request.id} 审批完成,审批状态为:rejected' 
             )
 
-            # 将当前步骤的所有待处理审批都标记为已取消
+            # 将当前步骤的所有待处理审批都记为已取消
             RequestApproval.objects.filter(
                 supply_request=supply_request,
                 step=current_step,
@@ -1200,17 +1292,70 @@ def approval_rejected(request):
 def approval_already_processed(request):
     return render(request, 'app01/approval_already_processed.html', {'message': '该审批已经被处理过，无法再次操作。'})
 
-def approval_detail(request, approval_id):
-    approval = get_object_or_404(RequestApproval, id=approval_id)
+def approval_detail(request, supply_id):
+    # 获取申请记录
+    supply_request = get_object_or_404(SupplyRequest, id=supply_id)
     
+    # 获取当前用户的待审批记录
+    approval = get_object_or_404(
+        RequestApproval, 
+        supply_request=supply_request,
+        approver=request.user,
+        status='pending'
+    )
+    
+    # 获取申请物品，添加 select_related 优化查询
+    items = SupplyRequestItem.objects.filter(
+        supply_request=supply_request
+    ).select_related('office_supply').order_by('id')
+    
+    # 获取所有相关的审批记录，添加 select_related 和排序
+    approvals = RequestApproval.objects.filter(
+        supply_request=supply_request
+    ).select_related(
+        'approver',
+        'step'
+    ).order_by('created_at')
+    
+    # 检查当前用户是否可以审批
+    can_approve = False
+    if request.user == approval.approver and approval.status == 'pending':
+        can_approve = True
+    
+    # 处理审批操作
     if request.method == 'POST':
+        if not can_approve:
+            messages.error(request, '您没有权限进行此操作')
+            return redirect('pending_approvals')
+            
         action = request.POST.get('action')
-        comment = request.POST.get('comment')
+        comment = request.POST.get('comment', '').strip()
         
-        if action in ['approve', 'reject']:
-            return process_approval(request, approval_id, approve=(action == 'approve'), comment=comment)
+        # 验证审批意见
+        if not comment:
+            messages.error(request, '请填写审批意见')
+            return render(request, 'app01/approval_detail.html', {
+                'request': supply_request,
+                'items': items,
+                'approvals': approvals,
+                'can_approve': can_approve,
+            })
+        
+        # 根据action的值确定是同意还是拒绝
+        is_approved = True if action == 'approve' else False
+        
+        # 使用 process_approval 方法处理审批
+        process_approval(request, approval.id, is_approved, comment)
+        return redirect('pending_approvals')
     
-    return render(request, 'app01/approval_detail.html', {'approval': approval})
+    context = {
+        'request': supply_request,
+        'items': items,
+        'approvals': approvals,
+        'can_approve': can_approve,
+    }
+    
+    return render(request, 'app01/approval_detail.html', context)
 
 
 @require_POST
@@ -1261,21 +1406,61 @@ def resend_approval_email(request, history_id):
 @require_http_methods(["POST"])
 def resend_email(request, request_id):
     try:
+        # 获取供应请
         supply_request = SupplyRequest.objects.get(id=request_id)
-        # 在这里添加重发邮件的逻辑
-        # ...
+        
+        # 检查申请状态是否为 pending
+        if supply_request.status != 'pending':
+            return JsonResponse({
+                'status': 'error',
+                'message': '只能重发审批状态的申请邮件'
+            }, status=400)
+        
+        # 获取所有待审的审批记录
+        pending_approvals = RequestApproval.objects.filter(
+            supply_request=supply_request,
+            status='pending'
+        ).select_related('approver')
+        
+        if not pending_approvals.exists():
+            return JsonResponse({
+                'status': 'error',
+                'message': '没有待处理的审批记录'
+            }, status=400)
+
+        # 重发邮件给每个待审批的审批人
+        for approval in pending_approvals:
+            try:
+                send_approval_email(
+                    supply_request=supply_request,
+                    approver=approval.approver
+                )
+
+                OperationLog.objects.create(
+                    operator='system',
+                    operation_type='Resend_Email',
+                    operation_desc=f'收件人：{approval.approver.username}; 申请编号: {supply_request.id}; 审批编号: {approval.id}'
+                )
+
+            except Exception as e:
+                # 记录具体的邮件发送失败信息
+                print(f"Failed to send email to {approval.approver.email}: {str(e)}")
+                continue
 
         return JsonResponse({
             'status': 'success',
             'message': '邮件重发成功'
         })
+
     except SupplyRequest.DoesNotExist:
         return JsonResponse({
             'status': 'error',
             'message': '找不到对应的申请记录'
         }, status=404)
     except Exception as e:
+        # 记录错误信息
+        print(f"Error in resend_email: {str(e)}")
         return JsonResponse({
             'status': 'error',
-            'message': str(e)
+            'message': f'邮件重发失败：{str(e)}'
         }, status=500)

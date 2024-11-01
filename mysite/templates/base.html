@@ -98,8 +98,11 @@
                     <li><a href="{% url 'create_supply_request' %}">申请种子</a></li>
                     <li><a href="{% url 'supply_request_list' %}">我的申请</a></li>
                     <li><a href="{% url 'pending_approvals' %}">待审批</a></li>
+                    {% comment %} {% if user.is_superuser %} {% endcomment %}
                     <li><a href="{% url 'approval_history' %}">审批历史</a></li>
-                    {% if user.is_staff %}
+                    {% comment %} {% endif %} {% endcomment %}
+
+                    {% if user.is_superuser %}
                         <li><a href="{% url 'approval_process_settings' %}">审批流程设置</a></li>
                     {% endif %}
                     <li><a href="{% url 'operation_logs' %}">操作日志</a></li>
