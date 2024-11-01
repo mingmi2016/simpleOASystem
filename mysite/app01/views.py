@@ -195,7 +195,7 @@ def process_approval(request, approval_id, approve, comment):
 
         # 发送拒绝邮件给申请人
         # send_mail(
-        #     '办公用品申请被拒绝',
+        #     '���公用品申请被拒绝',
         #     f'您的办公用品申请已被 {request_approval.approver} 拒绝。',
         #     settings.DEFAULT_FROM_EMAIL,
         #     [supply_request.requester.email],
@@ -277,10 +277,17 @@ def update_request_status(supply_request):
 
 @login_required
 def supply_request_list(request):
+    # 获取搜索参数
+    request_id = request.GET.get('request_id', '')
+    
     # 获取当前用户的申请记录
     requests = SupplyRequest.objects.filter(
         requester=request.user
     ).order_by('-created_at')
+    
+    # 如果有搜索参数，进行过滤
+    if request_id:
+        requests = requests.filter(id__icontains=request_id)
 
     # 分页
     paginator = Paginator(requests, 10)  # 每页显示10条
@@ -312,6 +319,7 @@ def supply_request_list(request):
     context = {
         'request_list': request_list,
         'page_obj': page_obj,
+        'request_id': request_id,  # 将搜索参数传递到模板
     }
     
     return render(request, 'app01/supply_request_list.html', context)
@@ -394,7 +402,7 @@ def delete_supply_request(request, pk):
             supply_request.delete()
             messages.success(request, '供应请求已成功删除。')
         else:
-            messages.error(request, '无法删除此供应请求，因为它已经开始审批或已被批准。')
+            messages.error(request, '无法删除此��应请求，因为它已经开始审批或已被批准。')
     else:
         messages.error(request, '你没有权限删除此供应请。')
     
@@ -402,8 +410,15 @@ def delete_supply_request(request, pk):
 
 @login_required
 def approval_history(request):
+    # 获取搜索参数
+    request_id = request.GET.get('request_id', '')
+    
     # 获取申请，并按创建时间降序排序
     supply_requests = SupplyRequest.objects.all().order_by('-created_at')
+    
+    # 如果有搜索参数，进行过滤
+    if request_id:
+        supply_requests = supply_requests.filter(id__icontains=request_id)
     
     # 每页显示3条记录
     paginator = Paginator(supply_requests, 3)
@@ -439,6 +454,7 @@ def approval_history(request):
     context = {
         'history_list': history_list,
         'page_obj': histories,
+        'request_id': request_id,  # 将搜索参数传递到模板
     }
     return render(request, 'app01/approval_history.html', context)
 
@@ -707,7 +723,7 @@ def send_approval_email(supply_request, approver):
  
     if approver.email.endswith('njau.edu.cn') or approver.email.endswith('163.com'):
         # 163邮箱 写法
-        html_message = '<p>您好 %s</p>' \
+        html_message = '<p>好 %s</p>' \
                 '<p>有一个新的种子申请需要您审批。</p>' \
                 '<p>申请人：%s </p>' \
                 '<p>申请用途：%s</p>' \

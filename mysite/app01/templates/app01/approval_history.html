@@ -5,9 +5,33 @@
 <div style="padding: 20px;">
     <h2>审批历史</h2>
     
+    <!-- 添加搜索表单 -->
+    <div style="margin-bottom: 20px; background-color: #f5f5f5; padding: 15px; border-radius: 5px;">
+        <form method="get" class="form-inline">
+            <div style="display: flex; gap: 10px; align-items: center;">
+                <input type="text" 
+                       name="request_id" 
+                       value="{{ request_id }}" 
+                       placeholder="请输入申请编号" 
+                       style="padding: 8px; border: 1px solid #ddd; border-radius: 4px; flex: 0 0 200px;">
+                <button type="submit" 
+                        style="padding: 8px 20px; background-color: #4CAF50; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    搜索
+                </button>
+                {% if request_id %}
+                <a href="{% url 'approval_history' %}" 
+                   style="padding: 8px 20px; background-color: #6c757d; color: white; text-decoration: none; border-radius: 4px;">
+                    清除
+                </a>
+                {% endif %}
+            </div>
+        </form>
+    </div>
+    
+    <!-- 现有的审批历史列表 -->
     {% for history in history_list %}
     <div style="border: 1px solid #ddd; margin-bottom: 20px; padding: 15px; border-radius: 5px;">
-        <!-- 使用 flex 布局实现三列并排显示 -->
+        <!-- 保持原有的三列布局 -->
         <div style="display: flex; gap: 20px;">
             <!-- 申请信息部分 - 20% -->
             <div style="flex: 0 0 20%; padding: 10px; background-color: #f5f5f5; border-radius: 5px;">
@@ -180,32 +204,40 @@
         </div>
     </div>
     {% empty %}
-    <div style="text-align: center; padding: 20px;">暂无审批记录</div>
+    <div style="text-align: center; padding: 20px; background-color: #f5f5f5; border-radius: 5px;">
+        {% if request_id %}
+            没有找到匹配的审批记录
+        {% else %}
+            暂无审批记录
+        {% endif %}
+    </div>
     {% endfor %}
 
-    <!-- 分页部分 -->
+    <!-- 修改分页部分，保持搜索参数 -->
     {% if page_obj.paginator.num_pages > 1 %}
     <div style="margin-top: 20px; text-align: center;">
         <div style="display: inline-block; padding: 10px; background-color: #f5f5f5; border-radius: 5px;">
-            <!-- 首页和上一页 -->
             {% if page_obj.has_previous %}
-                <a href="?page=1" style="padding: 5px 10px; border: 1px solid #ddd; text-decoration: none; color: #333;">首页</a>
-                <a href="?page={{ page_obj.previous_page_number }}" style="padding: 5px 10px; border: 1px solid #ddd; text-decoration: none; color: #333;">上一页</a>
+                <a href="?page=1{% if request_id %}&request_id={{ request_id }}{% endif %}" 
+                   style="padding: 5px 10px; border: 1px solid #ddd; text-decoration: none; color: #333;">首页</a>
+                <a href="?page={{ page_obj.previous_page_number }}{% if request_id %}&request_id={{ request_id }}{% endif %}" 
+                   style="padding: 5px 10px; border: 1px solid #ddd; text-decoration: none; color: #333;">上一页</a>
             {% endif %}
 
-            <!-- 页码 -->
             {% for num in page_obj.paginator.page_range %}
                 {% if num == page_obj.number %}
                     <span style="padding: 5px 10px; border: 1px solid #4CAF50; background-color: #4CAF50; color: white;">{{ num }}</span>
                 {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
-                    <a href="?page={{ num }}" style="padding: 5px 10px; border: 1px solid #ddd; text-decoration: none; color: #333;">{{ num }}</a>
+                    <a href="?page={{ num }}{% if request_id %}&request_id={{ request_id }}{% endif %}" 
+                       style="padding: 5px 10px; border: 1px solid #ddd; text-decoration: none; color: #333;">{{ num }}</a>
                 {% endif %}
             {% endfor %}
 
-            <!-- 下一页和末页 -->
             {% if page_obj.has_next %}
-                <a href="?page={{ page_obj.next_page_number }}" style="padding: 5px 10px; border: 1px solid #ddd; text-decoration: none; color: #333;">下一页</a>
-                <a href="?page={{ page_obj.paginator.num_pages }}" style="padding: 5px 10px; border: 1px solid #ddd; text-decoration: none; color: #333;">末页</a>
+                <a href="?page={{ page_obj.next_page_number }}{% if request_id %}&request_id={{ request_id }}{% endif %}" 
+                   style="padding: 5px 10px; border: 1px solid #ddd; text-decoration: none; color: #333;">下一页</a>
+                <a href="?page={{ page_obj.paginator.num_pages }}{% if request_id %}&request_id={{ request_id }}{% endif %}" 
+                   style="padding: 5px 10px; border: 1px solid #ddd; text-decoration: none; color: #333;">末页</a>
             {% endif %}
         </div>
     </div>
