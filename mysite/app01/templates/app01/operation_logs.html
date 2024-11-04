@@ -85,35 +85,45 @@
         </table>
     </div>
     
-    <!-- 分页 -->
+    <!-- 修改分页部分 -->
     {% if logs.has_other_pages %}
-    <div style="display: flex; justify-content: center; gap: 5px;">
-        {% if logs.has_previous %}
-        <a 
-            href="?page={{ logs.previous_page_number }}&operator={{ operator }}&operation_type={{ operation_type }}&start_date={{ start_date }}&end_date={{ end_date }}"
-            style="padding: 5px 10px; border: 1px solid #ddd; text-decoration: none; color: #333;"
-        >
-            上一页
-        </a>
-        {% endif %}
-        
-        {% for num in logs.paginator.page_range %}
-        <a 
-            href="?page={{ num }}&operator={{ operator }}&operation_type={{ operation_type }}&start_date={{ start_date }}&end_date={{ end_date }}"
-            style="padding: 5px 10px; border: 1px solid #ddd; text-decoration: none; color: #333; {% if logs.number == num %}background-color: #4CAF50; color: white;{% endif %}"
-        >
-            {{ num }}
-        </a>
-        {% endfor %}
-        
-        {% if logs.has_next %}
-        <a 
-            href="?page={{ logs.next_page_number }}&operator={{ operator }}&operation_type={{ operation_type }}&start_date={{ start_date }}&end_date={{ end_date }}"
-            style="padding: 5px 10px; border: 1px solid #ddd; text-decoration: none; color: #333;"
-        >
-            下一页
-        </a>
-        {% endif %}
+    <div style="margin-top: 20px; text-align: center;">
+        <div style="display: inline-block; padding: 10px; background-color: #f5f5f5; border-radius: 5px;">
+            {% if logs.has_previous %}
+                <a href="?page=1{% if operator %}&operator={{ operator }}{% endif %}{% if operation_type %}&operation_type={{ operation_type }}{% endif %}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}"
+                   style="padding: 5px 10px; border: 1px solid #ddd; text-decoration: none; color: #333; margin-right: 5px; border-radius: 3px;">
+                    首页
+                </a>
+                <a href="?page={{ logs.previous_page_number }}{% if operator %}&operator={{ operator }}{% endif %}{% if operation_type %}&operation_type={{ operation_type }}{% endif %}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}"
+                   style="padding: 5px 10px; border: 1px solid #ddd; text-decoration: none; color: #333; margin-right: 5px; border-radius: 3px;">
+                    上一页
+                </a>
+            {% endif %}
+
+            {% for num in logs.paginator.page_range %}
+                {% if num == logs.number %}
+                    <span style="padding: 5px 10px; border: 1px solid #4CAF50; background-color: #4CAF50; color: white; margin-right: 5px; border-radius: 3px; display: inline-block;">
+                        {{ num }}
+                    </span>
+                {% elif num > logs.number|add:'-3' and num < logs.number|add:'3' %}
+                    <a href="?page={{ num }}{% if operator %}&operator={{ operator }}{% endif %}{% if operation_type %}&operation_type={{ operation_type }}{% endif %}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}"
+                       style="padding: 5px 10px; border: 1px solid #ddd; text-decoration: none; color: #333; margin-right: 5px; border-radius: 3px;">
+                        {{ num }}
+                    </a>
+                {% endif %}
+            {% endfor %}
+
+            {% if logs.has_next %}
+                <a href="?page={{ logs.next_page_number }}{% if operator %}&operator={{ operator }}{% endif %}{% if operation_type %}&operation_type={{ operation_type }}{% endif %}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}"
+                   style="padding: 5px 10px; border: 1px solid #ddd; text-decoration: none; color: #333; margin-right: 5px; border-radius: 3px;">
+                    下一页
+                </a>
+                <a href="?page={{ logs.paginator.num_pages }}{% if operator %}&operator={{ operator }}{% endif %}{% if operation_type %}&operation_type={{ operation_type }}{% endif %}{% if start_date %}&start_date={{ start_date }}{% endif %}{% if end_date %}&end_date={{ end_date }}{% endif %}"
+                   style="padding: 5px 10px; border: 1px solid #ddd; text-decoration: none; color: #333; border-radius: 3px;">
+                    末页
+                </a>
+            {% endif %}
+        </div>
     </div>
     {% endif %}
 </div>
