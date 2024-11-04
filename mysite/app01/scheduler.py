@@ -91,6 +91,13 @@ def call_approve_api():
     这个函数被定时任务调用。
     """
     url = "http://127.0.0.1:5000/api/get_approves"
+
+    # 记录日志
+    OperationLog.objects.create(
+            operator='system',
+            operation_type='Scheduler',
+            operation_desc=f'定时调度任务执行（call_approve_api）'
+        )
     
     try:
         # 发送 GET 请求到审批 API
@@ -130,11 +137,13 @@ def process_approve_data(request, approves):
         uid = approve['uid']
         
         if action == 'approve':
-            print('审批通过')
+            print('定时调度任务-审批通过')
             views.process_email_approval(request,approve_id, uid, token, approve=True)
+            # 反馈不能放到这里 令牌无效，是不能反馈的，应该是可以的，因为问题在于令牌为什么会无效，而不是反馈的问题，
+            # 现有的基础上，令牌无效了，重发邮件应该可以解决问题
             response = requests.get("http://127.0.0.1:5000/api/feedback?id=" + str(approve_id))  # 反馈,更新外部系统的审批状态
         elif action == 'reject':
-            print('审批拒绝')
+            print('定时调度任务-审批拒绝')
             views.process_email_approval(request,approve_id, uid, token, approve=False)
             response = requests.get("http://127.0.0.1:5000/api/feedback?id=" + str(approve_id))  # 反馈,更新外部系统的审批状态
         else:
@@ -167,6 +176,8 @@ def start():
         with connection.cursor() as cursor:
             cursor.execute("DELETE FROM django_apscheduler_djangojobexecution")
             cursor.execute("DELETE FROM django_apscheduler_djangojob")
+            # The command below was not working,and i don't know why
+            # cursor.execute("delete from operation_logwhere operation_type = 'Scheduler'")
         
         # 创建新的调度器
         scheduler = BackgroundScheduler(timezone=settings.TIME_ZONE)

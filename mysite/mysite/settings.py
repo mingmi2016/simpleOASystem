@@ -23,6 +23,11 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 # SECURITY WARNING: keep the secret key used in production secret!
 SECRET_KEY = '^95&4w3x@0260k8wechd#5d-q(t3ot1#a+)c#t^y4mlfgi_7&b'
 
+# 邮件链接有效时间(s) 7天
+PASSWORD_RESET_TIMEOUT = 604800
+
+# PASSWORD_RESET_TIMEOUT = 60 
+
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 

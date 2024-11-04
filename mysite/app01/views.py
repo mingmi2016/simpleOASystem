@@ -40,6 +40,7 @@ from django.core.paginator import Paginator, EmptyPage, PageNotAnInteger
 from .models import RequestApproval
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
+# from django.contrib.auth.tokens import default_token_generator
 
 logger = logging.getLogger(__name__)
 
@@ -195,7 +196,7 @@ def process_approval(request, approval_id, approve, comment):
 
         # 发送拒绝邮件给申请人
         # send_mail(
-        #     '���公用品申请被拒绝',
+        #     '办公用品申请被拒绝',
         #     f'您的办公用品申请已被 {request_approval.approver} 拒绝。',
         #     settings.DEFAULT_FROM_EMAIL,
         #     [supply_request.requester.email],
@@ -402,7 +403,7 @@ def delete_supply_request(request, pk):
             supply_request.delete()
             messages.success(request, '供应请求已成功删除。')
         else:
-            messages.error(request, '无法删除此��应请求，因为它已经开始审批或已被批准。')
+            messages.error(request, '无法删除此供应请求，因为它已经开始审批或已被批准。')
     else:
         messages.error(request, '你没有权限删除此供应请。')
     
@@ -723,7 +724,7 @@ def send_approval_email(supply_request, approver):
  
     if approver.email.endswith('njau.edu.cn') or approver.email.endswith('163.com'):
         # 163邮箱 写法
-        html_message = '<p>好 %s</p>' \
+        html_message = '<p>您好 %s</p>' \
                 '<p>有一个新的种子申请需要您审批。</p>' \
                 '<p>申请人：%s </p>' \
                 '<p>申请用途：%s</p>' \
@@ -1014,6 +1015,7 @@ def process_email_approval(request, approval_id, uidb64, token , approve):
     except (TypeError, ValueError, OverflowError, User.DoesNotExist):
         messages.error(request, "无效的用户 ID")
         print("无效的用户 ID")
+        response = requests.get("http://127.0.0.1:5000/api/feedback?id=" + str(approval_id))  # 反馈,更新外部系统的审批状态
         return redirect('approval_error')
 
     # 验证用户身份和令牌有效性
@@ -1024,8 +1026,9 @@ def process_email_approval(request, approval_id, uidb64, token , approve):
         OperationLog.objects.create(
             operator='system',
             operation_type='Exception',
-            operation_desc=f'无效的令牌! uid:{uidb64},token:{token} 申请编号: {approval_id}; 审批编号: {approval_id}'
+            operation_desc=f'无效的令牌! uid:{uidb64},token:{token}  审批编号: {approval_id}'
         )
+        # 异常的时候，给管理员发邮件 TODO
 
         return redirect('approval_error')
 
@@ -1034,12 +1037,14 @@ def process_email_approval(request, approval_id, uidb64, token , approve):
         request_approval = RequestApproval.objects.get(id=approval_id, approver=user)
     except RequestApproval.DoesNotExist:
         messages.error(request, "找不到对应的审批记录")
+        response = requests.get("http://127.0.0.1:5000/api/feedback?id=" + str(approval_id))  # 反馈,更新外部系统的审批状态
         print("找不到对应的审批记录")
         return redirect('approval_error')
 
     if request_approval.status != 'pending':
         messages.warning(request, "该审批已经被处理")
         print("该审批已经被处理")
+        response = requests.get("http://127.0.0.1:5000/api/feedback?id=" + str(approval_id))  # 反馈,更新外部系统的审批状态
         return redirect('approval_already_processed')
 
     with transaction.atomic():
@@ -1050,11 +1055,13 @@ def process_email_approval(request, approval_id, uidb64, token , approve):
         if supply_request.status == 'rejected':
             messages.warning(request, "该申请已被拒绝，无法进行进一步操作。")
             print("该申请已被拒绝，无法进行进一步操作。")
+            response = requests.get("http://127.0.0.1:5000/api/feedback?id=" + str(approval_id))  # 反馈,更新外部系统的审批状态
             return redirect('approval_cancelled')
 
         if request_approval.status == 'cancelled':
             messages.warning(request, "该审批步骤已被取消，无法进行进一步操作。")
             print("该审批步骤已被取消，无法进行进一步操作。")
+            response = requests.get("http://127.0.0.1:5000/api/feedback?id=" + str(approval_id))  # 反馈,更新外部系统的审批状态
             return redirect('approval_cancelled')
 
         if approve:
@@ -1164,8 +1171,6 @@ def process_email_approval(request, approval_id, uidb64, token , approve):
             messages.success(request, "已拒绝申请")
             return redirect('approval_rejected')
 
-    messages.error(request, "处理审批时出现错误")
-    return redirect('approval_error')
 
 def send_final_approval_email(supply_request):
     # 发送最终批准邮件给申请人

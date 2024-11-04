@@ -85,7 +85,7 @@
             
             <!-- 申请物品部分 - 15% -->
             <div style="flex: 0 0 15%; padding: 10px; background-color: #f5f5f5; border-radius: 5px;">
-                <h3 style="margin-top: 0; margin-bottom: 10px;">申请物品</h3>
+                <h3 style="margin-top: 0; margin-bottom: 10px;">申请种子</h3>
                 {% for item in history.items %}
                     <div style="margin-bottom: 5px; font-size: 0.9em;">
                         <div>种子: {{ item.office_supply.name }}</div>
@@ -95,7 +95,7 @@
                         {% endif %}
                     </div>
                 {% empty %}
-                    <div>无物品</div>
+                    <div>无种子</div>
                 {% endfor %}
             </div>
             

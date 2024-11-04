@@ -278,6 +278,7 @@ class OperationLog(models.Model):
         ('Resend_Email', '重发邮件'),
         ('Exception', '异常'),
         ('OTHER', '其他'),
+        ('Scheduler', '定时调度'),
     ]
 
     # 基本字段
