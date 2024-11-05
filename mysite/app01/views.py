@@ -158,7 +158,7 @@ def process_approval(request, approval_id, approve, comment):
         # 发送确认邮件给当前审批人
         # send_mail(
         #     '审批确认',
-        #     f'您已成功批准了 {supply_request.requester} 的办公用品申请。',
+        #     f'您已成功批了 {supply_request.requester} 的办公用品申请。',
         #     settings.DEFAULT_FROM_EMAIL,
         #     [request_approval.approver.email],
         #     fail_silently=False,
@@ -194,7 +194,7 @@ def process_approval(request, approval_id, approve, comment):
             status='pending'
         ).update(status='cancelled')
 
-        # 发送拒绝邮件给申请人
+        # 发拒绝邮件给申请人
         # send_mail(
         #     '办公用品申请被拒绝',
         #     f'您的办公用品申请已被 {request_approval.approver} 拒绝。',
@@ -303,7 +303,7 @@ def supply_request_list(request):
             supply_request=req
         ).select_related('office_supply')
 
-        # 获取审批记录
+        # 获取审批录
         approvals = RequestApproval.objects.filter(
             supply_request=req
         ).select_related(
@@ -540,7 +540,7 @@ from django.utils.encoding import force_bytes
 #     申请物品:
 #     {', '.join([f"{item.name} ({item.quantity})" for item in supply_request.items.all()])}
 
-#     请点击以下链接进审批：
+#     请点以下链接进审批：
     
 #     批: {approve_url}
     
@@ -617,47 +617,98 @@ def approval_process(request, request_id):
 
 @login_required
 def approval_process_settings(request):
+    # 获取所有审批步骤，按 order 升序排列
+    approval_steps = ApprovalStep.objects.all().order_by('order')
+    
     if request.method == 'POST':
         form = ApprovalStepForm(request.POST)
         if form.is_valid():
-            approval_step = form.save(commit=False)
-            max_order = ApprovalStep.objects.aggregate(models.Max('order'))['order__max'] or 0
-            approval_step.order = max_order + 1
-            approval_step.save()
-            form.save_m2m()
-            return redirect('approval_process_settings')
+            try:
+                with transaction.atomic():
+                    # 获取当前最大的 order 值
+                    max_order = ApprovalStep.objects.aggregate(Max('order'))['order__max'] or 0
+                    approval_step = form.save(commit=False)
+                    approval_step.order = max_order + 1
+                    approval_step.step_number = approval_step.order
+                    approval_step.save()
+                    form.save_m2m()  # 保存多对多关系
+                messages.success(request, '审批步骤已添加')
+                return redirect('approval_process_settings')
+            except Exception as e:
+                messages.error(request, f'保存失败：{str(e)}')
     else:
         form = ApprovalStepForm()
 
-    # 按 process_name 和 order 排序
-    approval_steps = ApprovalStep.objects.all().order_by('process_name', 'order')
-    
     return render(request, 'app01/approval_process_settings.html', {
-        'form': form, 
-        'approval_steps': approval_steps
+        'form': form,
+        'approval_steps': approval_steps,
     })
 
 @login_required
 def edit_approval_step(request, step_id):
     step = get_object_or_404(ApprovalStep, id=step_id)
+    users = User.objects.filter(is_active=True).order_by('username')
+    
     if request.method == 'POST':
-        form = ApprovalStepForm(request.POST, instance=step)
-        if form.is_valid():
-            form.save()
+        process_name = request.POST.get('process_name')
+        approver_ids = request.POST.getlist('approvers')
+        is_countersign = request.POST.get('is_countersign') == 'True'
+        
+        # 验证
+        if not process_name:
+            messages.error(request, '步骤名称不能为空')
+            return render(request, 'app01/edit_approval_step.html', {'step': step, 'users': users})
+            
+        if is_countersign and len(approver_ids) < 2:
+            messages.error(request, '会签审批需要至少两个审批人')
+            return render(request, 'app01/edit_approval_step.html', {'step': step, 'users': users})
+            
+        if not is_countersign and len(approver_ids) != 1:
+            messages.error(request, '普通审批只能选择一个审批人')
+            return render(request, 'app01/edit_approval_step.html', {'step': step, 'users': users})
+        
+        try:
+            # 更新基本信息
+            step.process_name = process_name
+            step.is_countersign = is_countersign
+            step.save()
+            
+            # 更新审批人
+            step.approvers.clear()
+            step.approvers.add(*approver_ids)
+            
+            messages.success(request, '审批步骤已更新')
             return redirect('approval_process_settings')
-    else:
-        form = ApprovalStepForm(instance=step)
+        except Exception as e:
+            messages.error(request, f'保存失败：{str(e)}')
     
     return render(request, 'app01/edit_approval_step.html', {
-        'form': form,
-        'step': step
+        'step': step,
+        'users': users,
     })
 
 @login_required
 def delete_approval_step(request, step_id):
-    step = get_object_or_404(ApprovalStep, id=step_id)
-    step.delete()
-    messages.success(request, '审批步骤已删除')
+    try:
+        with transaction.atomic():
+            step = get_object_or_404(ApprovalStep, id=step_id)
+            current_order = step.order
+            
+            # 删除当前步骤
+            step.delete()
+            
+            # 更新后续步骤的序号
+            ApprovalStep.objects.filter(
+                order__gt=current_order
+            ).update(
+                order=F('order') - 1,
+                step_number=F('step_number') - 1
+            )
+            
+        messages.success(request, '步骤已删除，序号已更新')
+    except Exception as e:
+        messages.error(request, f'删除失败：{str(e)}')
+    
     return redirect('approval_process_settings')
 
 from django.urls import reverse
@@ -723,7 +774,7 @@ def send_approval_email(supply_request, approver):
     recipient_list = [approver.email]
  
     if approver.email.endswith('njau.edu.cn') or approver.email.endswith('163.com'):
-        # 163邮箱 写法
+        # 163邮箱 写
         html_message = '<p>您好 %s</p>' \
                 '<p>有一个新的种子申请需要您审批。</p>' \
                 '<p>申请人：%s </p>' \
@@ -766,7 +817,6 @@ def send_approval_email(supply_request, approver):
         operation_desc=f'收件人：{approver.username}; 申请编号: {supply_request.id}; 审批编号: {approval.id}'
     )
 
-
 def email_approve(request, approval_id, uidb64, token, action):
     try:
         uid = urlsafe_base64_decode(uidb64).decode()
@@ -789,7 +839,7 @@ def email_approve(request, approval_id, uidb64, token, action):
             approval.supply_request.save()
             messages.success(request, '申请已拒绝')
         else:
-            messages.error(request, '无效的操作')
+            messages.error(request, '无效的作')
             return redirect('home')
         
         return redirect('approval_success')
@@ -823,7 +873,7 @@ def create_supply_request(request):
                     # 创建第一个步骤的审批记录并发送邮件
                     create_approval_records(supply_request, first_step)
                 
-                    # 更新供应请求的状态
+                    # 更新供请求的状态
                     supply_request.current_step = first_step
                     supply_request.status = 'pending'
                     supply_request.save()
@@ -939,7 +989,7 @@ def reject_request_email(request, approval_id, uidb64, token):
 #     # 处理审批操作
 #     if action == 'approve':
 #         approval.status = 'approved'
-#         messages.success(request, '您已批准此申请')
+#         messages.success(request, '您已批准此���请')
 #     elif action == 'reject':
 #         approval.status = 'rejected'
 #         messages.success(request, '您已拒绝此申请')
@@ -1007,7 +1057,7 @@ def process_email_approval(request, approval_id, uidb64, token , approve):
     try:
         request_approval = RequestApproval.objects.get(id=approval_id, approver=user)
     except RequestApproval.DoesNotExist:
-        messages.error(request, "找不到对应的审批记录")
+        messages.error(request, "不到对应的审批记录")
         response = requests.get("http://127.0.0.1:5000/api/feedback?id=" + str(approval_id))  # 反馈,更新外部系统的审批状态
         print("找不到对应的审批记录")
         return redirect('approval_error')
@@ -1147,7 +1197,7 @@ def send_final_approval_email(supply_request):
     # 发送最终批准邮件给申请人
     send_mail(
         '办公用品申请已批准',
-        f'您的办公用品申请已被完全批准。',
+        f'您的办公用品申请已被完全准。',
         settings.DEFAULT_FROM_EMAIL,
         [supply_request.requester.email],
         fail_silently=False,
@@ -1309,7 +1359,7 @@ def approval_detail(request, supply_id):
         'step'
     ).order_by('created_at')
     
-    # 检查当前用户是否可以审批
+    # 查当前用户是否可以审批
     can_approve = False
     if request.user == approval.approver and approval.status == 'pending':
         can_approve = True
@@ -1401,7 +1451,7 @@ def resend_email(request, request_id):
         # 获取供应请
         supply_request = SupplyRequest.objects.get(id=request_id)
         
-        # 检查申请状态是否为 pending
+        # 查申请状态是否为 pending
         if supply_request.status != 'pending':
             return JsonResponse({
                 'status': 'error',
@@ -1441,7 +1491,7 @@ def resend_email(request, request_id):
 
         return JsonResponse({
             'status': 'success',
-            'message': '邮件重发成功'
+            'message': '邮件重���成功'
         })
 
     except SupplyRequest.DoesNotExist:
@@ -1470,7 +1520,49 @@ def search_supply(request):
     
     supplies = OfficeSupply.objects.filter(
         name__icontains=query
-    )[:10]  # 限制返回10条结果
+    )[:10]  # 限制返回10条果
     
     results = [{'id': s.id, 'text': s.name} for s in supplies]
     return JsonResponse({'results': results})
+
+
+
+
+def search_users(request):
+    try:
+        search_term = request.GET.get('term', '')
+        print(f"Received search term: {search_term}")  # 打印搜索词
+
+        # 查询所有用户（用于调试）
+        all_users = User.objects.filter(is_active=True).values('id', 'username')
+        print(f"All active users: {list(all_users)}")  # 打印所有活跃用户
+
+        # 执行搜索
+        users = User.objects.filter(
+            Q(username__icontains=search_term) | 
+            Q(first_name__icontains=search_term) |
+            Q(last_name__icontains=search_term),
+            is_active=True
+        ).values('id', 'username')
+
+        # 转换结果
+        results = [{'id': user['id'], 'text': user['username']} for user in users]
+        print(f"Search results: {results}")  # 打印搜索结果
+
+        response_data = {
+            'results': results,
+            'pagination': {'more': False}
+        }
+        print(f"Response data: {response_data}")  # 打印响应数据
+        
+        return JsonResponse(response_data)
+        
+    except Exception as e:
+        print(f"Error occurred: {str(e)}")  # 打印错误信息
+        return JsonResponse({
+            'results': [],
+            'pagination': {'more': False},
+            'error': str(e)
+        })
+
+

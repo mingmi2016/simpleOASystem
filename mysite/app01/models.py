@@ -27,20 +27,23 @@ class ApprovalStep(models.Model):
     用于记录每个审批步骤的详细信息，包括审批人、审批顺序等。
     """
     process_name = models.CharField(max_length=100)
-    step_number = models.IntegerField(unique=True, verbose_name="步骤编号")
+    step_number = models.IntegerField(unique=True)
+    order = models.IntegerField(unique=True)
     approvers = models.ManyToManyField(User, related_name='approval_steps')
-    is_countersign = models.BooleanField(default=False, help_text="是否为会签步骤")
-    created_at = models.DateTimeField(default=timezone.now, editable=False)
+    is_countersign = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    order = models.IntegerField(unique=True, verbose_name="排序")
 
     class Meta:
-        unique_together = ['process_name', 'step_number']
-        ordering = ['order']
+        ordering = ['process_name', 'step_number']
 
     def __str__(self):
-        return f"步骤 {self.step_number}"
+        return f"{self.process_name} - 步骤 {self.step_number}"
 
+    def save(self, *args, **kwargs):
+        if not self.order:
+            self.order = self.step_number
+        super().save(*args, **kwargs)
     def get_next_step(self):
         return ApprovalStep.objects.filter(process_name=self.process_name, step_number__gt=self.step_number).order_by('step_number').first()
 
@@ -247,7 +250,7 @@ class RequestApproval(models.Model):
 @receiver(post_save, sender=SupplyRequest)
 def supply_request_post_save(sender, instance, created, **kwargs):
     if created:
-        # 确保这里没有重复调用发送邮件的函数
+        # 确保这里没有重复调用送邮件的函数
         pass
 
 @receiver(post_save, sender=RequestApproval)
@@ -291,3 +294,4 @@ class OperationLog(models.Model):
 
     def __str__(self):
         return f"{self.operator} - {self.get_operation_type_display()} - {self.operation_time}"
+

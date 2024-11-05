@@ -102,9 +102,9 @@
                     <li><a href="{% url 'approval_history' %}">审批历史</a></li>
                     {% comment %} {% endif %} {% endcomment %}
 
-                    {% if user.is_superuser %}
+                    {% comment %} {% if user.is_superuser %} {% endcomment %}
                         <li><a href="{% url 'approval_process_settings' %}">审批流程设置</a></li>
-                    {% endif %}
+                    {% comment %} {% endif %} {% endcomment %}
                     <li><a href="{% url 'operation_logs' %}">操作日志</a></li>
                     <li><a href="{% url 'logout' %}">登出</a></li>
                     <li class="user-info">当前用户: {{ user.username }}</li>

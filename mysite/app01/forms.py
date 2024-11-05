@@ -36,39 +36,35 @@ class RequestApprovalForm(forms.ModelForm):
         self.fields['comment'].label = "审批意见"
 
 class ApprovalStepForm(forms.ModelForm):
-    approvers = forms.ModelMultipleChoiceField(
-        queryset=User.objects.all(),
-        widget=forms.CheckboxSelectMultiple,
-        required=False
-    )
-
     class Meta:
         model = ApprovalStep
-        fields = ['process_name', 'step_number', 'approvers', 'is_countersign', 'order']
-        labels = {
-            'step_number': '步骤编号',
-            'order': '排序',
-        }
+        fields = ['process_name', 'approvers', 'is_countersign']
         widgets = {
             'process_name': forms.TextInput(attrs={'class': 'form-control'}),
-            'step_number': forms.NumberInput(attrs={'class': 'form-control'}),
             'approvers': forms.SelectMultiple(attrs={'class': 'form-control'}),
-            'is_countersign': forms.CheckboxInput(attrs={'class': 'form-check-input'}),
+            'is_countersign': forms.RadioSelect(choices=((False, '普通步骤'), (True, '会签步骤')))
         }
-
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-        self.fields['process_name'].label = "流程名称"
-        self.fields['step_number'].label = "步骤序号"
-        self.fields['approvers'].label = "审批人"
-        self.fields['is_countersign'].label = "是否为会签步骤"
+        labels = {
+            'process_name': '流程名称',
+            'approvers': '审批人',
+            'is_countersign': '审批类型'
+        }
+        help_texts = {
+            'approvers': '普通步骤选择一个审批人，会签步骤选择多个审批人'
+        }
 
     def clean(self):
         cleaned_data = super().clean()
+        is_countersign = cleaned_data.get('is_countersign')
         approvers = cleaned_data.get('approvers')
 
-        if not approvers:
-            raise forms.ValidationError("必须选择至少一个审批人。")
+        if approvers:
+            if not is_countersign and len(approvers) > 1:
+                self.add_error('approvers', '普通步骤只能选择一个审批人')
+            elif is_countersign and len(approvers) < 2:
+                self.add_error('approvers', '会签步骤必须选择至少两个审批人')
+        else:
+            self.add_error('approvers', '请选择审批人')
 
         return cleaned_data
 

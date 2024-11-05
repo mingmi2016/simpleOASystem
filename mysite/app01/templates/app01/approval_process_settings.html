@@ -4,271 +4,310 @@
 {% block title %}审批流程设置{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet">
 <style>
-    .approval-process {
+    .content-wrapper {
         background-color: #f8f9fa;
-        border-radius: 5px;
-        padding: 15px;
+        min-height: calc(100vh - 56px);
+        padding: 20px 0;
+    }
+    
+    .main-container {
+        background-color: transparent;
+        padding: 0 15px;
+    }
+    
+    .page-title {
+        color: #333;
+        margin-bottom: 20px;
+        padding-left: 15px;
+    }
+    
+    .card {
+        background-color: #ffffff;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        height: 100%;
+    }
+    
+    .card-header {
+        background-color: #f8f9fa;
+        border-bottom: 2px solid #007bff;
+        padding: 15px 20px;
+        font-weight: bold;
+    }
+    
+    .card-body {
+        padding: 20px;
+    }
+    
+    .form-group {
         margin-bottom: 20px;
     }
-    .approval-step {
-        background-color: #ffffff;
-        border: 1px solid #dee2e6;
-        border-radius: 5px;
-        padding: 10px;
-        margin-bottom: 10px;
-    }
-    .approver-badge {
-        background-color: #007bff;
-        color: white;
-        padding: 3px 8px;
-        border-radius: 10px;
-        margin-right: 5px;
-    }
-    .countersign-badge {
-        background-color: #28a745;
-        color: white;
-        padding: 3px 8px;
-        border-radius: 10px;
-    }
-    .order-badge {
-        background-color: #6c757d;
-        color: white;
-        padding: 3px 8px;
-        border-radius: 10px;
-        margin-right: 5px;
-    }
-    .action-buttons {
-        margin-top: 10px;
-    }
-    .action-buttons .btn {
-        margin-right: 5px;
-    }
-
-    .add-step-form {
-        background-color: #f8f9fa;
-        border-radius: 5px;
-        padding: 20px;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-    }
-
-    .form-group label {
-        font-weight: 500;
+    
+    label {
+        font-weight: 600;
         color: #495057;
         margin-bottom: 8px;
     }
-
+    
     .form-control {
         border: 1px solid #ced4da;
         border-radius: 4px;
         padding: 8px 12px;
-        transition: border-color 0.15s ease-in-out;
     }
-
+    
     .form-control:focus {
         border-color: #80bdff;
-        box-shadow: 0 0 0 0.2rem rgba(0,123,255,0.25);
+        box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
     }
-
-    .custom-radio-group {
-        display: flex;
-        gap: 20px;
-        margin: 10px 0;
+    
+    .select2-container {
+        width: 100% !important;
     }
-
-    .custom-radio-label {
-        display: inline-flex;
-        align-items: center;
-        cursor: pointer;
+    
+    .btn {
         padding: 8px 16px;
         border-radius: 4px;
-        transition: background-color 0.2s ease;
-    }
-
-    .custom-radio-label:hover {
-        background-color: #e9ecef;
-    }
-
-    .custom-radio-input {
-        display: none;
-    }
-
-    .custom-radio-mark {
-        width: 18px;
-        height: 18px;
-        border: 2px solid #28a745;
-        border-radius: 50%;
-        margin-right: 8px;
-        position: relative;
-        transition: all 0.2s ease;
-    }
-
-    .custom-radio-mark:before {
-        content: '';
-        position: absolute;
-        top: 50%;
-        left: 50%;
-        transform: translate(-50%, -50%);
-        width: 10px;
-        height: 10px;
-        background: #28a745;
-        border-radius: 50%;
-        opacity: 0;
-        transition: all 0.2s ease;
-    }
-
-    .custom-radio-input:checked + .custom-radio-mark:before {
-        opacity: 1;
-    }
-
-    .custom-radio-text {
-        font-size: 14px;
-        color: #495057;
-    }
-
-    .submit-btn {
-        background-color: #28a745;
-        border: none;
-        padding: 10px 20px;
-        border-radius: 4px;
-        color: white;
         font-weight: 500;
-        transition: background-color 0.2s ease;
     }
-
-    .submit-btn:hover {
-        background-color: #218838;
+    
+    .table {
+        margin-bottom: 0;
+    }
+    
+    .table th {
+        background-color: #f8f9fa;
+        border-bottom: 2px solid #dee2e6;
+        font-weight: 600;
+    }
+    
+    .table td, .table th {
+        padding: 12px;
+        vertical-align: middle;
+    }
+    
+    .approval-type {
+        display: flex;
+        gap: 20px;
+        margin-top: 8px;
+    }
+    
+    .approval-type label {
+        font-weight: normal;
+        margin-bottom: 0;
+        cursor: pointer;
+    }
+    
+    .table-wrapper {
+        max-height: calc(100vh - 200px);
+        overflow-y: auto;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <h2 class="mb-4">审批流程设置</h2>
-
-    <div class="row">
-        <div class="col-md-8">
-            <h3>已设置的审批流程</h3>
-            {% if approval_steps %}
-                {% regroup approval_steps by process_name as process_list %}
-                {% for process in process_list %}
-                    <div class="approval-process">
-                        <h4>{{ process.grouper }}</h4>
-                        {% for step in process.list %}
-                            <div class="approval-step">
-                                {% comment %} <span class="order-badge">顺序: {{ step.order }}</span> {% endcomment %}
-                                <strong>步骤 {{ step.step_number }}:</strong>
-                                {% for approver in step.approvers.all %}
-                                    <span class="approver-badge">{{ approver.username }}</span>
-                                {% endfor %}
-                                {% if step.is_countersign %}
-                                    <span class="countersign-badge">会签</span>
-                                {% endif %}
-                                <div class="action-buttons">
-                                    <a href="{% url 'edit_approval_step' step.id %}" class="btn btn-sm btn-primary">编辑</a>
-                                    <a href="{% url 'delete_approval_step' step.id %}" class="btn btn-sm btn-danger" onclick="return confirm('确定要删除这个步骤吗？');">删除</a>
-                                </div>
-                            </div>
-                        {% endfor %}
+<div class="content-wrapper">
+    <div class="container main-container">
+        <h2 class="page-title">审批流程设置</h2>
+        
+        <div class="row">
+            <!-- 左侧：现有步骤列表 -->
+            <div class="col-md-7">
+                <div class="card">
+                    <div class="card-header">
+                        现有审批步骤
                     </div>
-                {% endfor %}
-            {% else %}
-                <p class="alert alert-info">暂无设置的审批流程。</p>
-            {% endif %}
-        </div>
-
-        <div class="col-md-4">
-            <h3>添加新的审批步骤</h3>
-            <form method="post" class="mt-3 add-step-form">
-                {% csrf_token %}
-                {% for field in form %}
-                    {% if field.name == 'is_countersign' %}
-                        <div class="form-group">
-                            <label>{{ field.label }}</label>
-                            <div class="custom-radio-group">
-                                <label class="custom-radio-label">
-                                    <input type="radio" name="is_countersign" value="False" class="custom-radio-input" checked>
-                                    <span class="custom-radio-mark"></span>
-                                    <span class="custom-radio-text">普通步骤</span>
-                                </label>
-                                <label class="custom-radio-label">
-                                    <input type="radio" name="is_countersign" value="True" class="custom-radio-input">
-                                    <span class="custom-radio-mark"></span>
-                                    <span class="custom-radio-text">会签步骤</span>
-                                </label>
+                    <div class="card-body p-0">
+                        <div class="table-wrapper">
+                            <table class="table">
+                                <thead>
+                                    <tr>
+                                        <th>序号</th>
+                                        <th>步骤名称</th>
+                                        <th>审批人</th>
+                                        <th>审批类型</th>
+                                        <th>操作</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {% for step in approval_steps %}
+                                    <tr>
+                                        <td>{{ step.order }}</td>
+                                        <td>{{ step.process_name }}</td>
+                                        <td>
+                                            {% for approver in step.approvers.all %}
+                                                {{ approver.username }}{% if not forloop.last %}, {% endif %}
+                                            {% endfor %}
+                                        </td>
+                                        <td>
+                                            {% if step.is_countersign %}
+                                                会签审批
+                                            {% else %}
+                                                普通审批
+                                            {% endif %}
+                                        </td>
+                                        <td>
+                                            <a href="{% url 'edit_approval_step' step.id %}" 
+                                               class="btn btn-sm btn-primary">编辑</a>
+                                            <a href="{% url 'delete_approval_step' step.id %}" 
+                                               class="btn btn-sm btn-danger"
+                                               onclick="return confirm('确定要删除这个步骤吗？')">删除</a>
+                                        </td>
+                                    </tr>
+                                    {% empty %}
+                                    <tr>
+                                        <td colspan="5" class="text-center">暂无审批步骤</td>
+                                    </tr>
+                                    {% endfor %}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- 右侧：添加新步骤表单 -->
+            <div class="col-md-5">
+                <div class="card">
+                    <div class="card-header">
+                        添加新的审批步骤
+                    </div>
+                    <div class="card-body">
+                        <form method="post" id="approval-step-form">
+                            {% csrf_token %}
+                            <div class="form-group">
+                                <label for="process_name">步骤名称</label>
+                                <input type="text" 
+                                       class="form-control" 
+                                       id="process_name" 
+                                       name="process_name" 
+                                       required>
                             </div>
-                        </div>
-                    {% else %}
-                        <div class="form-group">
-                            {{ field.label_tag }}
-                            {{ field }}
-                            {% if field.help_text %}
-                                <small class="form-text text-muted">{{ field.help_text }}</small>
-                            {% endif %}
-                            {% for error in field.errors %}
-                                <div class="invalid-feedback d-block">{{ error }}</div>
-                            {% endfor %}
-                        </div>
-                    {% endif %}
-                {% endfor %}
-                <button type="submit" class="btn btn-primary">添加步骤</button>
-            </form>
+                            <div class="form-group">
+                                <label for="approvers">审批人</label>
+                                <select name="approvers" 
+                                        id="approvers" 
+                                        class="form-control select2" 
+                                        required>
+                                </select>
+                            </div>
+                            <div class="form-group">
+                                <label>审批类型</label>
+                                <div class="approval-type">
+                                    <label>
+                                        <input type="radio" 
+                                               name="is_countersign" 
+                                               value="False" 
+                                               checked> 普通审批
+                                    </label>
+                                    <label>
+                                        <input type="radio" 
+                                               name="is_countersign" 
+                                               value="True"> 会签审批
+                                    </label>
+                                </div>
+                                <small id="approval-type-help" class="form-text text-muted">
+                                    普通审批只能选择一位审批人
+                                </small>
+                            </div>
+                            <button type="submit" class="btn btn-primary">加步骤</button>
+                        </form>
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.3/dist/umd/popper.min.js"></script>
-<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
-<script>
-document.addEventListener('DOMContentLoaded', function() {
-    const addStepBtn = document.getElementById('add-step-btn');
-    addStepBtn.addEventListener('click', function(e) {
-        e.preventDefault();
-        console.log('添加步骤按钮被点击');
-        // 这里添加 AJAX 请求代码
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+<script type="text/javascript">
+$(document).ready(function() {
+    // 初始化 Select2
+    function initSelect2(isCountersign) {
+        $('#approvers').select2({
+            placeholder: isCountersign ? '搜索并选择多位审批人' : '搜索并选择一位审批人',
+            allowClear: true,
+            multiple: isCountersign,
+            ajax: {
+                url: '{% url "search_users" %}',
+                dataType: 'json',
+                delay: 250,
+                data: function(params) {
+                    console.log('Search params:', params);
+                    return {
+                        term: params.term || '',
+                        page: params.page || 1
+                    };
+                },
+                processResults: function(data) {
+                    console.log('Received data:', data);
+                    return {
+                        results: data.results,
+                        pagination: data.pagination
+                    };
+                },
+                error: function(xhr, status, error) {
+                    console.error('Ajax error:', status, error);
+                },
+                cache: true
+            },
+            language: {
+                noResults: function() {
+                    return '没有找到匹配的用户';
+                },
+                searching: function() {
+                    return '搜索中...';
+                },
+                inputTooShort: function() {
+                    return '请输入至少1个字符';
+                }
+            },
+            minimumInputLength: 1,
+            maximumSelectionLength: isCountersign ? null : 1,
+            debug: true
+        });
+    }
+
+    // 初始化为普通审批模式
+    initSelect2(false);
+
+    // 监听审批类型切换
+    $('input[name="is_countersign"]').on('change', function() {
+        const isCountersign = $(this).val() === 'True';
+        const $select = $('#approvers');
+        
+        // 清除现有选择
+        $select.val(null).trigger('change');
+        
+        // 销毁并重新初始化
+        $select.select2('destroy');
+        initSelect2(isCountersign);
+        
+        // 更新提示文本
+        $('#approval-type-help').text(
+            isCountersign ? '会签审批可以选择多位审批人' : '普通审批只能选择一位审批人'
+        );
+    });
+
+    // 表单提交验证
+    $('#approval-step-form').on('submit', function(e) {
+        const isCountersign = $('input[name="is_countersign"]:checked').val() === 'True';
+        const selectedCount = $('#approvers').select2('data').length;
+        
+        if (isCountersign && selectedCount < 2) {
+            e.preventDefault();
+            alert('会签审批需要选择至少两个审批人');
+            return false;
+        } else if (!isCountersign && selectedCount !== 1) {
+            e.preventDefault();
+            alert('普通审批必须选择一位审批人');
+            return false;
+        }
     });
 });
-
-function addStep() {
-    fetch('/app01/add-approval-step/', {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': getCookie('csrftoken'),
-            'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-            // 这里添加需要发送的数据
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        console.log('Success:', data);
-        // 这里处理成功响应
-    })
-    .catch((error) => {
-        console.error('Error:', error);
-        // 这里处理错误
-    });
-}
-
-// 获取 CSRF token 的函数
-function getCookie(name) {
-    let cookieValue = null;
-    if (document.cookie && document.cookie !== '') {
-        const cookies = document.cookie.split(';');
-        for (let i = 0; i < cookies.length; i++) {
-            const cookie = cookies[i].trim();
-            if (cookie.substring(0, name.length + 1) === (name + '=')) {
-                cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
-                break;
-            }
-        }
-    }
-    return cookieValue;
-}
 </script>
 {% endblock %}

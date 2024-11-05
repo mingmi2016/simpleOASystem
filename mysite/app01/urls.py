@@ -36,4 +36,6 @@ urlpatterns = [
     path('resend-approval-email/<int:history_id>/', views.resend_approval_email, name='resend_approval_email'),
     path('resend-email/<int:request_id>/', views.resend_email, name='resend_email'),
     path('search-supply/', views.search_supply, name='search_supply'),
+    path('search-users/', views.search_users, name='search_users'),
+
 ]
