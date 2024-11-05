@@ -10,12 +10,21 @@ class SupplyRequestForm(forms.ModelForm):
         model = SupplyRequest
         fields = ['purpose']
 
-class SupplyRequestItemForm(forms.Form):
-    office_supply = forms.ModelChoiceField(queryset=OfficeSupply.objects.all(), label='办公用品')
-    quantity = forms.IntegerField(min_value=1, label='数量')
+class SupplyRequestItemForm(forms.ModelForm):
+    class Meta:
+        model = SupplyRequestItem
+        fields = ['office_supply', 'quantity']
+        widgets = {
+            'quantity': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'})
+        }
 
-SupplyRequestItemFormSet = formset_factory(SupplyRequestItemForm, extra=1, can_delete=True)
-
+SupplyRequestItemFormSet = forms.inlineformset_factory(
+    SupplyRequest, 
+    SupplyRequestItem,
+    form=SupplyRequestItemForm,
+    extra=1,
+    can_delete=True
+)
 class RequestApprovalForm(forms.ModelForm):
     class Meta:
         model = RequestApproval

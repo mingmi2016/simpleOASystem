@@ -50,36 +50,36 @@ class ApprovalStep(models.Model):
     def get_approver(self):
         return self.approvers.all().first()
 
-class Profile(models.Model):
-    user = models.OneToOneField(User, on_delete=models.CASCADE)
-    is_manager = models.BooleanField(default=False)  # 这里缺少默认值
-    # 添加你需要的其他字段
+# class Profile(models.Model):
+#     user = models.OneToOneField(User, on_delete=models.CASCADE)
+#     is_manager = models.BooleanField(default=False)  # 这里缺少默认值
+#     # 添加你需要的其他字段
     
-    def __str__(self):
-        return self.user.username
+#     def __str__(self):
+#         return self.user.username
 
-    @classmethod
-    def get_or_create(cls, user):
-        try:
-            return user.profile
-        except cls.DoesNotExist:
-            return cls.objects.create(user=user)
+#     @classmethod
+#     def get_or_create(cls, user):
+#         try:
+#             return user.profile
+#         except cls.DoesNotExist:
+#             return cls.objects.create(user=user)
 
-class Department(models.Model):
-    name = models.CharField(max_length=100)
-    head = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='headed_department')
+# class Department(models.Model):
+#     name = models.CharField(max_length=100)
+#     head = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='headed_department')
 
-    def __str__(self):
-        return self.name
+#     def __str__(self):
+#         return self.name
 
-@receiver(post_save, sender=User)
-def create_user_profile(sender, instance, created, **kwargs):
-    if created:
-        Profile.objects.create(user=instance)
+# @receiver(post_save, sender=User)
+# def create_user_profile(sender, instance, created, **kwargs):
+#     if created:
+#         Profile.objects.create(user=instance)
 
-@receiver(post_save, sender=User)
-def save_user_profile(sender, instance, **kwargs):
-    instance.profile.save()
+# @receiver(post_save, sender=User)
+# def save_user_profile(sender, instance, **kwargs):
+#     instance.profile.save()
 
 class OfficeSupply(models.Model):
     name = models.CharField(max_length=100)
@@ -88,14 +88,7 @@ class OfficeSupply(models.Model):
     def __str__(self):
         return self.name
 
-# class OfficeSupplyOption(models.Model):
-#     name = models.CharField(max_length=100)
 
-#     def __str__(self):
-#         return self.name
-
-# def get_default_supply_option():
-#     return OfficeSupplyOption.objects.first().id
 
 def get_default_user():
     return User.objects.get_or_create(username='default_user')[0].id
@@ -278,7 +271,6 @@ class OperationLog(models.Model):
         ('Resend_Email', '重发邮件'),
         ('Exception', '异常'),
         ('OTHER', '其他'),
-        ('Scheduler', '定时调度'),
     ]
 
     # 基本字段

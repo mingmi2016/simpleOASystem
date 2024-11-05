@@ -14,14 +14,14 @@ from pathlib import Path
 import os
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent  # 当前文件的上级目录的上级目录（也就是根目录）
 
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/3.1/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = '^95&4w3x@0260k8wechd#5d-q(t3ot1#a+)c#t^y4mlfgi_7&b'
+SECRET_KEY = '^95&4w3x@0260k8wechd#5d-q(t3ot1#a+)c#t^y4mlfgi_7&b'  # 密钥（这个是默认生成的）
 
 # 邮件链接有效时间(s) 7天
 PASSWORD_RESET_TIMEOUT = 604800

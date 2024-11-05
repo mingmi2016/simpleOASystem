@@ -4,7 +4,7 @@
 {% block title %}申请种子{% endblock %}
 
 {% block extra_css %}
-<link rel="stylesheet" href="{% static 'css/select2.min.css' %}">
+<link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <style>
     body {
         background-color: #f8f9fa;
@@ -22,7 +22,7 @@
         padding-bottom: 10px;
         margin-bottom: 30px;
     }
-    .supply-item {
+    .item-form {
         background-color: #f8f9fa;
         border: 1px solid #dee2e6;
         padding: 20px;
@@ -30,7 +30,7 @@
         border-radius: 5px;
         transition: all 0.3s ease;
     }
-    .supply-item:hover {
+    .item-form:hover {
         box-shadow: 0 5px 15px rgba(0,0,0,0.1);
     }
     .form-row {
@@ -38,9 +38,10 @@
         flex-wrap: wrap;
         margin-right: -10px;
         margin-left: -10px;
+        align-items: flex-end;
     }
     .form-group {
-        flex: 1;
+        flex: 0 0 50%;
         padding: 0 10px;
         margin-bottom: 15px;
     }
@@ -51,7 +52,7 @@
         display: block;
     }
     select, input[type="number"], textarea {
-        width: 100%;
+        width: 96%;
         padding: 8px 12px;
         border: 1px solid #ced4da;
         border-radius: 4px;
@@ -62,10 +63,10 @@
         outline: 0;
         box-shadow: 0 0 0 0.2rem rgba(0,123,255,.25);
     }
-    textarea#id_purpose {
+    textarea {
         min-height: 100px;
     }
-    .delete-item {
+    .remove-item {
         background-color: #dc3545;
         color: white;
         border: none;
@@ -73,8 +74,13 @@
         border-radius: 4px;
         cursor: pointer;
         transition: background-color 0.15s ease-in-out;
+        margin-top: 0;
+        margin-bottom: 0;
+        height: 38px;
+        display: flex;
+        align-items: center;
     }
-    .delete-item:hover {
+    .remove-item:hover {
         background-color: #c82333;
     }
     #add-item {
@@ -89,7 +95,7 @@
     #add-item:hover {
         background-color: #218838;
     }
-    button[type="submit"] {
+    .btn-primary {
         background-color: #007bff;
         color: white;
         border: none;
@@ -98,7 +104,7 @@
         cursor: pointer;
         transition: background-color 0.15s ease-in-out;
     }
-    button[type="submit"]:hover {
+    .btn-primary:hover {
         background-color: #0056b3;
     }
     .form-actions {
@@ -107,17 +113,110 @@
     .form-actions button {
         margin-right: 10px;
     }
-    #back-button {
-        background-color: #6c757d;
-        color: white;
-        border: none;
-        padding: 10px 20px;
-        border-radius: 5px;
-        cursor: pointer;
-        transition: background-color 0.15s ease-in-out;
+
+    /* Select2 样式优化 */
+    .select2-container--default .select2-selection--single {
+        height: 38px;
+        border: 1px solid #ced4da;
+        border-radius: 4px;
     }
-    #back-button:hover {
-        background-color: #5a6268;
+    .select2-container--default .select2-selection--single .select2-selection__rendered {
+        line-height: 36px;
+        padding-left: 12px;
+    }
+    .select2-container--default .select2-selection--single .select2-selection__arrow {
+        height: 36px;
+    }
+
+    /* 修改表单行的样式 */
+    .form-row {
+        display: flex;
+        flex-wrap: wrap;
+        margin-right: -10px;
+        margin-left: -10px;
+        align-items: flex-end;
+    }
+    
+    /* 调整种子选择框的宽度 */
+    .form-group.select-group {
+        flex: 2;
+        padding: 0 10px;
+        margin-bottom: 15px;
+    }
+    
+    /* 调整数量输入框的宽度 */
+    .form-group.quantity-group {
+        flex: 0 0 150px;
+        padding: 0 10px;
+        margin-bottom: 15px;
+    }
+    
+    /* 调整删除按钮容的样式 */
+    .form-group.button-group {
+        flex: 0 0 auto;
+        padding: 0 10px;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: flex-end;
+    }
+
+    /* 添加错误提示的样式 */
+    .error-message {
+        color: #dc3545;
+        font-size: 0.875rem;
+        margin-top: 0.25rem;
+        display: block;
+    }
+
+    .has-error {
+        border-color: #dc3545 !important;
+    }
+
+    .has-error:focus {
+        box-shadow: 0 0 0 0.2rem rgba(220,53,69,.25) !important;
+    }
+
+    /* Select2错误状态样式 */
+    .has-error + .select2-container .select2-selection {
+        border-color: #dc3545 !important;
+    }
+
+    /* 表单组样式 */
+    .form-group {
+        position: relative;
+        margin-bottom: 1rem;
+    }
+
+    /* 调整表单行的布局 */
+    .form-row {
+        display: flex;
+        flex-wrap: wrap;
+        margin-right: -10px;
+        margin-left: -10px;
+        align-items: flex-end;
+    }
+
+    /* 种子选择框的容器 */
+    .form-group:nth-child(1) {
+        flex: 0 0 45%;  /* 种子选择框占45% */
+        padding: 0 10px;
+        margin-bottom: 15px;
+    }
+
+    /* 数量输入框的容器 */
+    .form-group:nth-child(2) {
+        flex: 0 0 45%;  /* 数量输入框占55% */
+        padding: 0 10px;
+        margin-bottom: 15px;
+    }
+
+    /* 删除按钮的容器 */
+    .form-group.button-group {
+        flex: 0 0 auto;
+        padding: 0 10px;
+        margin-bottom: 15px;
+        display: flex;
+        align-items: flex-end;
     }
 </style>
 {% endblock %}
@@ -125,130 +224,202 @@
 {% block content %}
 <div class="container">
     <h2>申请种子</h2>
-    <form method="POST" id="supply-request-form">
+    <form method="post" id="supply-request-form">
         {% csrf_token %}
+        {{ form.non_field_errors }}
         
-        {{ formset.management_form }}
-        <div id="supply-items">
-            {% for item_form in formset %}
-                <div class="supply-item">
-                    <div class="form-row">
-                        <div class="form-group">
-                            <label>种子:</label>
-                            {{ item_form.office_supply }}
-                        </div>
-                        <div class="form-group">
-                            <label>数量:</label>
-                            {{ item_form.quantity }}
-                        </div>
-                        <div class="form-group" style="flex: 0 0 auto; align-self: flex-end;">
-                            <button type="button" class="delete-item">删除</button>
-                        </div>
+        <div class="form-group">
+            <label for="purpose">申请用途:</label>
+            <textarea name="{{ form.purpose.html_name }}" 
+                      class="form-control" 
+                      rows="3"
+                      placeholder="请输入申请用途...">{{ form.purpose.value|default:'' }}</textarea>
+        </div>
+
+        <div id="items-container">
+            {{ formset.management_form }}
+            {% for form in formset %}
+            <div class="item-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>种子:</label>
+                        <select name="{{ form.office_supply.html_name }}" 
+                                class="form-control mutant-select" 
+                                style="width: 100%">
+                            {% if form.instance.office_supply %}
+                                <option value="{{ form.instance.office_supply.id }}" selected>
+                                    {{ form.instance.office_supply.name }}
+                                </option>
+                            {% endif %}
+                        </select>
                     </div>
+                    <div class="form-group">
+                        <label>数量:</label>
+                        <input type="number" name="{{ form.quantity.html_name }}" 
+                               class="form-control" 
+                               value="{{ form.quantity.value|default:'' }}" 
+                               min="1"
+                               placeholder="请输入数量">
+                    </div>
+                    {% if forloop.counter > 1 %}
+                    <div class="form-group button-group">
+                        <button type="button" class="remove-item">删除</button>
+                    </div>
+                    {% endif %}
                 </div>
+            </div>
             {% endfor %}
         </div>
-        <div class="form-group">
-            <label for="id_purpose">申请用途：</label>
-            {{ form.purpose }}
-        </div>
-        <button type="button" id="add-item">添加种子</button>
-        <button type="submit">提交申请</button>
+
         <div class="form-actions">
-            {% comment %} <button type="button" id="back-button">返回</button> {% endcomment %}
+            <button type="button" id="add-item">添加种子</button>
+            <button type="submit" class="btn-primary">提交申请</button>
         </div>
     </form>
 </div>
 {% endblock %}
 
 {% block extra_js %}
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM fully loaded');
-
-    const addButton = document.getElementById('add-item');
-    const supplyItems = document.getElementById('supply-items');
-    const totalForms = document.getElementById('id_form-TOTAL_FORMS');
-
-    console.log('Add button:', addButton);
-    console.log('Supply items:', supplyItems);
-    console.log('Total forms:', totalForms);
-
-    function updateElementIndex(el, prefix, ndx) {
-        const id_regex = new RegExp('(' + prefix + '-\\d+)');
-        const replacement = prefix + '-' + ndx;
-        if (el.id) el.id = el.id.replace(id_regex, replacement);
-        if (el.name) el.name = el.name.replace(id_regex, replacement);
-    }
-
-    function addForm(event) {
-        console.log('Add form function called');
-        event.preventDefault();
-        const formCount = parseInt(totalForms.value);
-        console.log('Current form count:', formCount);
-
-        if (supplyItems.children.length === 0) {
-            console.error('No supply items to clone');
-            return;
-        }
-
-        const newItem = supplyItems.children[0].cloneNode(true);
-        
-        newItem.querySelectorAll('input, select').forEach(input => {
-            updateElementIndex(input, 'form', formCount);
-            if (input.type !== 'hidden') {
-                input.value = '';
+$(document).ready(function() {
+    // 初始化Select2
+    function initSelect2(element) {
+        $(element).select2({
+            placeholder: '搜索种子...',
+            minimumInputLength: 2,
+            ajax: {
+                url: '{% url "search_supply" %}',
+                dataType: 'json',
+                delay: 250,
+                data: function(params) {
+                    return {
+                        q: params.term
+                    };
+                },
+                processResults: function(data) {
+                    return {
+                        results: data.results
+                    };
+                },
+                cache: true
             }
         });
-
-        const deleteButton = newItem.querySelector('.delete-item');
-        if (deleteButton) {
-            deleteButton.addEventListener('click', deleteForm);
-        }
-
-        supplyItems.appendChild(newItem);
-        totalForms.value = formCount + 1;
-        console.log('New form added. New count:', totalForms.value);
     }
 
-    function deleteForm(event) {
-        console.log('Delete form function called');
-        event.preventDefault();
-        const formCount = parseInt(totalForms.value);
-        if (formCount > 1) {
-            event.target.closest('.supply-item').remove();
-            totalForms.value = formCount - 1;
-            
-            const forms = supplyItems.children;
-            for (let i = 0; i < forms.length; i++) {
-                forms[i].querySelectorAll('input, select').forEach(input => {
-                    updateElementIndex(input, 'form', i);
-                });
-            }
-        } else {
-            alert('至少需要保留一个物品项');
-        }
-    }
-
-    if (addButton) {
-        console.log('Adding click event listener to add button');
-        addButton.addEventListener('click', addForm);
-    } else {
-        console.error('Add button not found');
-    }
-
-    document.querySelectorAll('.delete-item').forEach(button => {
-        button.addEventListener('click', deleteForm);
+    // 初始化现有的select
+    $('.mutant-select').each(function() {
+        initSelect2(this);
     });
 
-    // 添加返回按钮的功能
-    const backButton = document.getElementById('back-button');
-    if (backButton) {
-        backButton.addEventListener('click', function() {
-            window.history.back();
+    // 添加新项目
+    let formCount = {{ formset.total_form_count }};
+    $('#add-item').click(function() {
+        // 创建新的表单HTML
+        let newForm = `
+            <div class="item-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label>种子:</label>
+                        <select name="form-${formCount}-office_supply" 
+                                class="form-control mutant-select" 
+                                style="width: 100%">
+                        </select>
+                    </div>
+                    <div class="form-group">
+                        <label>数量:</label>
+                        <input type="number" name="form-${formCount}-quantity" 
+                               class="form-control" 
+                               value="" 
+                               min="1"
+                               placeholder="请输入数量">
+                    </div>
+                    <div class="form-group button-group">
+                        <button type="button" class="remove-item">删除</button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        // 添加新表单到容器
+        $('#items-container').append(newForm);
+        
+        // 初始化新表单中的select2
+        initSelect2($('#items-container .item-form:last-child .mutant-select'));
+        
+        // 更新表单计数
+        formCount++;
+        $('#id_form-TOTAL_FORMS').val(formCount);
+    });
+
+    // 删除项目
+    $(document).on('click', '.remove-item', function() {
+        $(this).closest('.item-form').remove();
+        formCount--;
+        $('#id_form-TOTAL_FORMS').val(formCount);
+    });
+
+    // 表单提交验证
+    $('#supply-request-form').on('submit', function(e) {
+        e.preventDefault();
+        
+        // 清除之前的错误提示
+        $('.error-message').remove();
+        $('.has-error').removeClass('has-error');
+        let hasError = false;
+        let selectedSupplies = new Set();
+
+        // 检查每个表单项
+        $('.item-form').each(function() {
+            const supplySelect = $(this).find('.select2-container').parent();  // 获取Select2容器的父元素
+            const quantityInput = $(this).find('input[type="number"]').parent();  // 获取数量输入框的父元素
+            
+            // 验证种子选择
+            const selectElement = $(this).find('select');
+            if (!selectElement.val()) {
+                hasError = true;
+                showError(supplySelect, '请选择种子');
+            } else {
+                // 检查重复种子
+                if (selectedSupplies.has(selectElement.val())) {
+                    hasError = true;
+                    showError(supplySelect, '不能选择重复的种子');
+                }
+                selectedSupplies.add(selectElement.val());
+            }
+            
+            // 验证数量
+            const quantityElement = $(this).find('input[type="number"]');
+            if (!quantityElement.val()) {
+                hasError = true;
+                showError(quantityInput, '请输入数量');
+            } else if (parseInt(quantityElement.val()) <= 0) {
+                hasError = true;
+                showError(quantityInput, '数量必须大于0');
+            }
         });
-    } else {
-        console.error('Back button not found');
+
+        // 验证申请用途
+        const purposeInput = $('textarea[name="purpose"]').parent();
+        if (!$('textarea[name="purpose"]').val().trim()) {
+            hasError = true;
+            showError(purposeInput, '请输入申请用途');
+        }
+
+        // 如果没有错误，提交表单
+        if (!hasError) {
+            this.submit();
+        }
+    });
+
+    // 显示错误信息的函数
+    function showError(container, message) {
+        container.find('input, select, textarea').addClass('has-error');
+        const errorDiv = $('<div>')
+            .addClass('error-message')
+            .text(message);
+        container.append(errorDiv);
     }
 });
 </script>

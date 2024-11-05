@@ -798,35 +798,6 @@ def email_approve(request, approval_id, uidb64, token, action):
         return redirect('approval_error')
 
 
-# @login_required
-# def create_supply_request(request):
-#     if request.method == 'POST':
-#         form = SupplyRequestForm(request.POST)
-#         formset = SupplyRequestItemFormSet(request.POST)
-#         if form.is_valid() and formset.is_valid():
-#             supply_request = form.save(commit=False)
-#             supply_request.requester = request.user
-#             supply_request.save()
-
-#             for item_form in formset:
-#                 if item_form.cleaned_data and not item_form.cleaned_data.get('DELETE', False):
-#                     SupplyRequestItem.objects.create(
-#                         supply_request=supply_request,
-#                         office_supply=item_form.cleaned_data['office_supply'],
-#                         quantity=item_form.cleaned_data['quantity']
-#                     )
-            
-#             messages.success(request, '办公用品申请已成功提交。')
-#             return redirect('supply_request_list')
-#         else:
-#             messages.error(request, '请检查表单中的错误。')
-#     else:
-#         form = SupplyRequestForm()
-#         formset = SupplyRequestItemFormSet()
-    
-#     return render(request, 'create_supply_request.html', {'form': form, 'formset': formset})
-
-
 @login_required
 def create_supply_request(request):
     if request.method == 'POST':
@@ -1485,3 +1456,21 @@ def resend_email(request, request_id):
             'status': 'error',
             'message': f'邮件重发失败：{str(e)}'
         }, status=500)
+    
+from django.http import JsonResponse
+from django.contrib.auth.decorators import login_required
+from django.db.models import Q
+from app01.models import OfficeSupply
+
+@login_required
+def search_supply(request):
+    query = request.GET.get('q', '')
+    if len(query) < 2:  # 至少输入2个字符才开始搜索
+        return JsonResponse({'results': []})
+    
+    supplies = OfficeSupply.objects.filter(
+        name__icontains=query
+    )[:10]  # 限制返回10条结果
+    
+    results = [{'id': s.id, 'text': s.name} for s in supplies]
+    return JsonResponse({'results': results})
