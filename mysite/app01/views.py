@@ -657,15 +657,27 @@ def edit_approval_step(request, step_id):
         # 验证
         if not process_name:
             messages.error(request, '步骤名称不能为空')
-            return render(request, 'app01/edit_approval_step.html', {'step': step, 'users': users})
+            return render(request, 'app01/edit_approval_step.html', {
+                'step': step, 
+                'users': users,
+                'selected_approvers': step.approvers.all()  # 添加这行
+            })
             
         if is_countersign and len(approver_ids) < 2:
             messages.error(request, '会签审批需要至少两个审批人')
-            return render(request, 'app01/edit_approval_step.html', {'step': step, 'users': users})
+            return render(request, 'app01/edit_approval_step.html', {
+                'step': step, 
+                'users': users,
+                'selected_approvers': step.approvers.all()  # 添加这行
+            })
             
         if not is_countersign and len(approver_ids) != 1:
             messages.error(request, '普通审批只能选择一个审批人')
-            return render(request, 'app01/edit_approval_step.html', {'step': step, 'users': users})
+            return render(request, 'app01/edit_approval_step.html', {
+                'step': step, 
+                'users': users,
+                'selected_approvers': step.approvers.all()  # 添加这行
+            })
         
         try:
             # 更新基本信息
@@ -685,6 +697,7 @@ def edit_approval_step(request, step_id):
     return render(request, 'app01/edit_approval_step.html', {
         'step': step,
         'users': users,
+        'selected_approvers': step.approvers.all()  # 添加这行
     })
 
 @login_required

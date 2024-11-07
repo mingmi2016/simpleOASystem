@@ -1,189 +1,259 @@
 {% extends 'base.html' %}
+{% load static %}
 
 {% block title %}编辑审批步骤{% endblock %}
 
 {% block extra_css %}
 <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
 <style>
+    /* 容器样式 */
+    .container {
+        max-width: 800px;
+        padding: 30px;
+        background-color: #fff;
+        box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        border-radius: 8px;
+        margin-top: 30px;
+    }
+
+    /* 标题样式 */
+    h2 {
+        color: #2c3e50;
+        margin-bottom: 30px;
+        padding-bottom: 15px;
+        border-bottom: 2px solid #eee;
+    }
+
+    /* 表单组样式 */
+    .form-group {
+        margin-bottom: 25px;
+    }
+
+    /* 标签样式 */
+    label {
+        color: #34495e;
+        font-weight: 500;
+        margin-bottom: 8px;
+        display: block;
+    }
+
+    /* 输入框样式 */
+    .form-control {
+        border: 1px solid #dce4ec;
+        border-radius: 4px;
+        padding: 8px 12px;
+        transition: border-color 0.15s ease-in-out;
+    }
+
+    .form-control:focus {
+        border-color: #3498db;
+        box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+    }
+
+    /* Select2 样式优化 */
     .select2-container {
         width: 100% !important;
     }
-    .help-text {
-        font-size: 0.875rem;
-        color: #6c757d;
-        margin-top: 5px;
+
+    .select2-container--default .select2-selection--multiple,
+    .select2-container--default .select2-selection--single {
+        border: 1px solid #dce4ec;
+        border-radius: 4px;
+        min-height: 42px;
+        padding: 4px;
+    }
+
+    .select2-container--default.select2-container--focus .select2-selection--multiple {
+        border-color: #3498db;
+        box-shadow: 0 0 0 0.2rem rgba(52, 152, 219, 0.25);
+    }
+
+    .select2-container--default .select2-selection--multiple .select2-selection__choice {
+        background-color: #3498db;
+        border: none;
+        color: white;
+        border-radius: 3px;
+        padding: 4px 8px;
+        margin: 4px;
+    }
+
+    .select2-container--default .select2-selection__choice__remove {
+        color: white;
+        margin-right: 5px;
+    }
+
+    .select2-container--default .select2-selection__choice__remove:hover {
+        color: #fff;
+        opacity: 0.8;
+    }
+
+    .select2-search__field {
+        width: 100% !important;
+        padding: 6px !important;
+    }
+
+    /* 复选框容器样式 */
+    .checkbox-container {
+        margin: 20px 0;
+        padding: 15px;
+        background-color: #f8f9fa;
+        border-radius: 4px;
+        border: 1px solid #eee;
+    }
+
+    /* 复选框标签样式 */
+    .checkbox-label {
+        display: flex;
+        align-items: center;
+        cursor: pointer;
+        margin: 0;
+    }
+
+    /* 复选框样式 */
+    input[type="checkbox"] {
+        margin-right: 10px;
+        cursor: pointer;
+    }
+
+    /* 按钮样式 */
+    .btn {
+        padding: 8px 20px;
+        font-weight: 500;
+        border-radius: 4px;
+        transition: all 0.2s ease;
+    }
+
+    .btn-primary {
+        background-color: #3498db;
+        border-color: #3498db;
+    }
+
+    .btn-primary:hover {
+        background-color: #2980b9;
+        border-color: #2980b9;
+    }
+
+    .btn-secondary {
+        background-color: #95a5a6;
+        border-color: #95a5a6;
+        margin-left: 10px;
+    }
+
+    .btn-secondary:hover {
+        background-color: #7f8c8d;
+        border-color: #7f8c8d;
+    }
+
+    /* 按钮组样式 */
+    .button-group {
+        margin-top: 30px;
+        padding-top: 20px;
+        border-top: 1px solid #eee;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="container mt-4">
-    <div class="row">
-        <div class="col-md-8 offset-md-2">
-            <div class="card">
-                <div class="card-header">
-                    <h3 class="mb-0">编辑审批步骤</h3>
-                </div>
-                <div class="card-body">
-                    {% if messages %}
-                        {% for message in messages %}
-                            <div class="alert alert-{{ message.tags }}">
-                                {{ message }}
-                            </div>
-                        {% endfor %}
-                    {% endif %}
-
-                    <form method="post">
-                        {% csrf_token %}
-                        <div class="form-group">
-                            <label for="process_name">步骤名称</label>
-                            <input type="text" 
-                                   class="form-control" 
-                                   id="process_name" 
-                                   name="process_name" 
-                                   value="{{ step.process_name }}"
-                                   required>
-                        </div>
-
-                        <div class="form-group">
-                            <label>审批类型</label>
-                            <div>
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" 
-                                           type="radio" 
-                                           name="is_countersign" 
-                                           id="normal_approval" 
-                                           value="False" 
-                                           {% if not step.is_countersign %}checked{% endif %}>
-                                    <label class="form-check-label" for="normal_approval">
-                                        普通审批
-                                    </label>
-                                </div>
-                                <div class="form-check form-check-inline">
-                                    <input class="form-check-input" 
-                                           type="radio" 
-                                           name="is_countersign" 
-                                           id="counter_approval" 
-                                           value="True" 
-                                           {% if step.is_countersign %}checked{% endif %}>
-                                    <label class="form-check-label" for="counter_approval">
-                                        会签审批
-                                    </label>
-                                </div>
-                            </div>
-                            <small class="help-text" id="approval-type-help">
-                                普通审批只能选择一位审批人，会签审批可以选择多位审批人
-                            </small>
-                        </div>
-
-                        <div class="form-group">
-                            <label for="approvers">审批人</label>
-                            <select name="approvers" 
-                                    id="approvers" 
-                                    class="form-control select2" 
-                                    {% if step.is_countersign %}multiple{% endif %}
-                                    required>
-                                {% if not step.is_countersign %}
-                                    <option value="">请选择审批人</option>
-                                {% endif %}
-                                {% for user in users %}
-                                    <option value="{{ user.id }}" 
-                                            {% if user in step.approvers.all %}selected{% endif %}>
-                                        {{ user.username }}
-                                    </option>
-                                {% endfor %}
-                            </select>
-                            <small class="help-text" id="approver-help"></small>
-                        </div>
-
-                        <div class="mt-3">
-                            <button type="submit" class="btn btn-primary">保存</button>
-                            <a href="{% url 'approval_process_settings' %}" class="btn btn-secondary ml-2">返回</a>
-                        </div>
-                    </form>
-                </div>
-            </div>
+<div class="container">
+    <h2>编辑审批步骤</h2>
+    <form method="post">
+        {% csrf_token %}
+        <div class="form-group">
+            <label for="process_name">步骤名称</label>
+            <input type="text" class="form-control" id="process_name" name="process_name" 
+                   value="{{ step.process_name }}" required>
         </div>
-    </div>
+        
+        <div class="form-group">
+            <label for="approvers">审批人</label>
+            <select class="form-control" id="approvers" name="approvers" multiple>
+                {% for approver in selected_approvers %}
+                    <option value="{{ approver.id }}" selected>{{ approver.username }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="checkbox-container">
+            <label class="checkbox-label">
+                <input type="checkbox" name="is_countersign" value="True"
+                       {% if step.is_countersign %}checked{% endif %}>
+                <span>是否为会签步骤</span>
+            </label>
+        </div>
+        
+        <div class="button-group">
+            <button type="submit" class="btn btn-primary">保存</button>
+            <a href="{% url 'approval_process_settings' %}" class="btn btn-secondary">返回</a>
+        </div>
+    </form>
 </div>
 {% endblock %}
 
 {% block extra_js %}
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/jquery@3.6.0/dist/jquery.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script>
 $(document).ready(function() {
-    function initSelect2(isCountersign) {
-        $('#approvers').select2({
-            placeholder: isCountersign ? '选择多位审批人' : '选择一位审批人',
-            allowClear: true,
-            multiple: isCountersign,
-            language: {
-                noResults: function() {
-                    return '没有找到匹配的用户';
-                },
-                searching: function() {
-                    return '搜索中...';
-                }
+    console.log('Document ready');
+    
+    // 初始化 Select2
+    $('#approvers').select2({
+        placeholder: '搜索审批人...',
+        allowClear: true,
+        ajax: {
+            url: '{% url "search_users" %}',
+            dataType: 'json',
+            delay: 250,
+            data: function (params) {
+                console.log('Search params:', params);
+                return {
+                    term: params.term || '',
+                    page: params.page || 1
+                };
             },
-            minimumInputLength: 1,  // 至少输入1个字符才开始搜索
-            maximumSelectionLength: isCountersign ? null : 1  // 普通审批限制只能选1个
-        }).val(null).trigger('change');
-        
-        // 恢复已选择的审批人
-        var selectedUsers = [
-            {% for user in step.approvers.all %}
-                { id: {{ user.id }}, text: '{{ user.username }}' },
-            {% endfor %}
-        ];
-        
-        if (selectedUsers.length > 0) {
-            var $select = $('#approvers');
-            selectedUsers.forEach(function(user) {
-                if ($select.find("option[value='" + user.id + "']").length) {
-                    $select.val(user.id).trigger('change');
-                } else {
-                    var newOption = new Option(user.text, user.id, true, true);
-                    $select.append(newOption).trigger('change');
-                }
-            });
+            processResults: function (data) {
+                console.log('Received data:', data);
+                return {
+                    results: data.results,
+                    pagination: {
+                        more: data.pagination.more
+                    }
+                };
+            },
+            cache: true
+        },
+        minimumInputLength: 2,
+        language: {
+            inputTooShort: function() {
+                return "请至少输入2个字符";
+            },
+            searching: function() {
+                return "搜索中...";
+            },
+            noResults: function() {
+                return "未找到匹配结果";
+            }
         }
-    }
-    
-    // 初始化Select2
-    initSelect2($('input[name="is_countersign"]:checked').val() === 'True');
-    
-    // 监听审批类型切换
+    });
+
+    // 监听会签复选框变化
     $('input[name="is_countersign"]').change(function() {
-        const isCountersign = $(this).val() === 'True';
+        console.log('Countersign changed');
+        var isCountersign = $(this).is(':checked');
+        var approversSelect = $('#approvers');
         
-        // 清除现有选择
-        $('#approvers').select2('destroy');
-        
-        // 重新初始化Select2
-        initSelect2(isCountersign);
-        
-        // 更新帮助文本
-        $('#approver-help').text(isCountersign ? 
-            '可以选择多位审批人' : 
-            '只能选择一位审批人');
-    });
-    
-    // 表单提交前验证
-    $('form').submit(function(e) {
-        const isCountersign = $('input[name="is_countersign"]:checked').val() === 'True';
-        const selectedCount = $('#approvers').select2('data').length;
-        
-        if (isCountersign && selectedCount < 2) {
-            e.preventDefault();
-            alert('会签审批需要选择至少两个审批人');
-            return false;
-        } else if (!isCountersign && selectedCount !== 1) {
-            e.preventDefault();
-            alert('普通审批必须选择一个审批人');
-            return false;
+        if (!isCountersign) {
+            if (approversSelect.val() && approversSelect.val().length > 1) {
+                approversSelect.val(approversSelect.val().slice(0, 1)).trigger('change');
+            }
+            approversSelect.prop('multiple', false);
+        } else {
+            approversSelect.prop('multiple', true);
         }
     });
+
+    // 初始触发会签复选框的change事件
+    $('input[name="is_countersign"]').trigger('change');
 });
 </script>
 {% endblock %}
