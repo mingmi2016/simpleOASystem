@@ -852,38 +852,72 @@ def email_approve(request, approval_id, uidb64, token, action):
 def create_supply_request(request):
     if request.method == 'POST':
         form = SupplyRequestForm(request.POST)
-        formset = SupplyRequestItemFormSet(request.POST)
+        formset = SupplyRequestItemFormSet(request.POST, prefix='items')
+        
+        print("Formset data:", request.POST)
+        print("Formset is valid:", formset.is_valid())
+        if not formset.is_valid():
+            print("Formset errors:", formset.errors)
+        
         if form.is_valid() and formset.is_valid():
-            with transaction.atomic():
-                supply_request = form.save(commit=False)
-                supply_request.requester = request.user
-                supply_request.save()
-
-                for item_form in formset:
-                    if item_form.cleaned_data and not item_form.cleaned_data.get('DELETE', False):
-                        SupplyRequestItem.objects.create(
-                            supply_request=supply_request,
-                            office_supply=item_form.cleaned_data['office_supply'],
-                            quantity=item_form.cleaned_data['quantity']
-                        )
-                
-                # 获取第一个审批步骤
-                first_step = ApprovalStep.objects.order_by('step_number').first()
-                if first_step:
-                    # 创建第一个步骤的审批记录并发送邮件
-                    create_approval_records(supply_request, first_step)
-                
-                    # 更新供请求的状态
-                    supply_request.current_step = first_step
-                    supply_request.status = 'pending'
+            try:
+                with transaction.atomic():
+                    supply_request = form.save(commit=False)
+                    supply_request.requester = request.user
                     supply_request.save()
 
-            return redirect('supply_request_list')
+                    # 处理所有提交的表单数据
+                    total_forms = int(request.POST.get('items-TOTAL_FORMS', 0))
+                    for i in range(total_forms):
+                        prefix = f'items-{i}'
+                        office_supply_id = request.POST.get(f'{prefix}-office_supply')
+                        quantity = request.POST.get(f'{prefix}-quantity')
+                        
+                        if office_supply_id and quantity:
+                            SupplyRequestItem.objects.create(
+                                supply_request=supply_request,
+                                office_supply_id=office_supply_id,
+                                quantity=quantity
+                            )
+                    
+                    # 处理额外的表单数据（form-前缀）
+                    i = 1
+                    while True:
+                        prefix = f'form-{i}'
+                        office_supply_id = request.POST.get(f'{prefix}-office_supply')
+                        quantity = request.POST.get(f'{prefix}-quantity')
+                        
+                        if not office_supply_id or not quantity:
+                            break
+                            
+                        SupplyRequestItem.objects.create(
+                            supply_request=supply_request,
+                            office_supply_id=office_supply_id,
+                            quantity=quantity
+                        )
+                        i += 1
+                    
+                    # 获取第一个审批步骤
+                    first_step = ApprovalStep.objects.order_by('step_number').first()
+                    if first_step:
+                        create_approval_records(supply_request, first_step)
+                        supply_request.current_step = first_step
+                        supply_request.status = 'pending'
+                        supply_request.save()
+
+                    messages.success(request, '申请已成功提交')
+                    return redirect('supply_request_list')
+            except Exception as e:
+                print(f"Error saving supply request: {str(e)}")
+                messages.error(request, f'保存失败：{str(e)}')
     else:
         form = SupplyRequestForm()
-        formset = SupplyRequestItemFormSet()
+        formset = SupplyRequestItemFormSet(prefix='items')
     
-    return render(request, 'app01/create_supply_request.html', {'form': form, 'formset': formset})
+    return render(request, 'app01/create_supply_request.html', {
+        'form': form, 
+        'formset': formset
+    })
 
 def create_approval_records(supply_request, step):
     approvals_created = []
@@ -989,7 +1023,7 @@ def reject_request_email(request, approval_id, uidb64, token):
 #     # 处理审批操作
 #     if action == 'approve':
 #         approval.status = 'approved'
-#         messages.success(request, '您已批准此���请')
+#         messages.success(request, '您已批准此请')
 #     elif action == 'reject':
 #         approval.status = 'rejected'
 #         messages.success(request, '您已拒绝此申请')
@@ -1455,7 +1489,7 @@ def resend_email(request, request_id):
         if supply_request.status != 'pending':
             return JsonResponse({
                 'status': 'error',
-                'message': '只能重发审批状态的申请邮件'
+                'message': '只能重发审批状态申请邮件'
             }, status=400)
         
         # 获取所有待审的审批记录
@@ -1491,7 +1525,7 @@ def resend_email(request, request_id):
 
         return JsonResponse({
             'status': 'success',
-            'message': '邮件重���成功'
+            'message': '邮件重发成功'
         })
 
     except SupplyRequest.DoesNotExist:

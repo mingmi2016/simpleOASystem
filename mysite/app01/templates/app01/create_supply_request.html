@@ -422,5 +422,29 @@ $(document).ready(function() {
         container.append(errorDiv);
     }
 });
+
+document.getElementById('add-form').addEventListener('click', function() {
+    const forms = document.getElementsByClassName('item-form');
+    const formNum = forms.length;
+    const newForm = forms[0].cloneNode(true);
+    
+    // 更新新表单的索引
+    newForm.innerHTML = newForm.innerHTML.replace(/items-0/g, `items-${formNum}`);
+    newForm.innerHTML = newForm.innerHTML.replace(/items_0/g, `items_${formNum}`);
+    
+    // 清空新表单的值
+    newForm.querySelectorAll('input, select').forEach(input => {
+        if (input.type !== 'hidden') {
+            input.value = '';
+        }
+    });
+    
+    // 插入新表单
+    forms[forms.length - 1].after(newForm);
+    
+    // 更新总表单数
+    const totalForms = document.querySelector('[name="items-TOTAL_FORMS"]');
+    totalForms.value = parseInt(totalForms.value) + 1;
+});
 </script>
 {% endblock %}

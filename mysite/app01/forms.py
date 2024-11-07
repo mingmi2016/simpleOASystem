@@ -1,5 +1,5 @@
 from django import forms
-from django.forms import formset_factory
+from django.forms import formset_factory, inlineformset_factory
 from .models import SupplyRequest, RequestApproval, OfficeSupply, ApprovalStep, SupplyRequestItem
 from django.contrib.auth.models import User
 
@@ -18,10 +18,10 @@ class SupplyRequestItemForm(forms.ModelForm):
             'quantity': forms.NumberInput(attrs={'class': 'form-control', 'min': '1'})
         }
 
-SupplyRequestItemFormSet = forms.inlineformset_factory(
-    SupplyRequest, 
+SupplyRequestItemFormSet = inlineformset_factory(
+    SupplyRequest,
     SupplyRequestItem,
-    form=SupplyRequestItemForm,
+    fields=('office_supply', 'quantity'),
     extra=1,
     can_delete=True
 )

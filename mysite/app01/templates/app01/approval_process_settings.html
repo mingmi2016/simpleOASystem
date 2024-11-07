@@ -137,7 +137,7 @@
                                         <td>{{ step.process_name }}</td>
                                         <td>
                                             {% for approver in step.approvers.all %}
-                                                {{ approver.username }}{% if not forloop.last %}, {% endif %}
+                                                {{ approver.last_name }}{{ approver.first_name }}({{ approver.username }}){% if not forloop.last %}, {% endif %}
                                             {% endfor %}
                                         </td>
                                         <td>
